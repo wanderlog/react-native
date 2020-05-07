@@ -50,6 +50,7 @@ type State = {|
   fixedHeight: boolean,
   logViewable: boolean,
   virtualized: boolean,
+  removeClippedSubviews: boolean,
   empty: boolean,
 |};
 
@@ -63,6 +64,7 @@ class FlatListExample extends React.PureComponent<Props, State> {
     fixedHeight: true,
     logViewable: false,
     virtualized: true,
+    removeClippedSubviews: false,
     empty: false,
   };
 
@@ -118,6 +120,7 @@ class FlatListExample extends React.PureComponent<Props, State> {
               {renderSmallSwitchOption(this, 'inverted')}
               {renderSmallSwitchOption(this, 'empty')}
               {renderSmallSwitchOption(this, 'debug')}
+              {renderSmallSwitchOption(this, 'removeClippedSubviews')}
               <Spindicator value={this._scrollPos} />
             </View>
           </View>
@@ -137,7 +140,8 @@ class FlatListExample extends React.PureComponent<Props, State> {
             inverted={this.state.inverted}
             key={
               (this.state.horizontal ? 'h' : 'v') +
-              (this.state.fixedHeight ? 'f' : 'd')
+              (this.state.fixedHeight ? 'f' : 'd') +
+              (this.state.removeClippedSubviews ? 'r' : 's')
             }
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
@@ -153,6 +157,7 @@ class FlatListExample extends React.PureComponent<Props, State> {
             renderItem={this._renderItemComponent}
             contentContainerStyle={styles.list}
             viewabilityConfig={VIEWABILITY_CONFIG}
+            removeClippedSubviews={this.state.removeClippedSubviews}
           />
         </View>
       </RNTesterPage>
