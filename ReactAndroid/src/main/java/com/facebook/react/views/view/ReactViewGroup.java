@@ -676,13 +676,11 @@ public class ReactViewGroup extends ViewGroup
     mHitSlopRect = rect;
   }
 
-  @Override
   public void setOverflow(String overflow) {
     mOverflow = overflow;
     invalidate();
   }
 
-  @Override
   public @Nullable String getOverflow() {
     return mOverflow;
   }
