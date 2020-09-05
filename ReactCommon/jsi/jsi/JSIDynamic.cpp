@@ -76,7 +76,18 @@ folly::dynamic dynamicFromValue(Runtime& runtime, const Value& value) {
       }
       return ret;
     } else if (obj.isFunction(runtime)) {
-      throw JSError(runtime, "JS Functions are not convertible to dynamic");
+      // throw JSError(runtime, "JS Functions are not convertible to dynamic");
+      //
+      // Peter note (2020-09-05): this was causing hard-to-track-down crashes
+      // on Android, likely because of somewhere where we're passing in a function
+      // prop when we aren't supposed to.
+      //
+      // To avoid crashes, I've changed this to return `null` rather than throwing.
+      //
+      // See:
+      // - https://github.com/facebook/react-native/pull/28037
+      // - https://github.com/facebook/react-native/issues/27203
+      return nullptr;
     } else {
       folly::dynamic ret = folly::dynamic::object();
       Array names = obj.getPropertyNames(runtime);
