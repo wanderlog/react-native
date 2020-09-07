@@ -1,3 +1,8 @@
+# Wanderlog-specific header
+
+Looking for instructions on how to build/integrate a change into our branch?
+See https://gitlab.com/travelchime/itineraries/-/blob/master/mobile/PATCHING_REACT_NATIVE.md
+
 <h1 align="center">
   <a href="https://facebook.github.io/react-native/">
     React Native
