@@ -4,6 +4,20 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+# Added fix from https://github.com/facebook/react-native/issues/31259#issuecomment-814949865
+# for error message:
+#
+# > /bin/sh -c .../Debug-iphonesimulator/FBReactNativeSpec.build/Script-F45532E0C9BBF654A0883132EA6E54FB.sh
+# > nvm is not compatible with the "PREFIX" environment variable: currently set
+# > to "/usr/local"
+# > Run `unset PREFIX` to unset it.
+#
+# > Command PhaseScriptExecution failed with a nonzero exit code
+# > PhaseScriptExecution [CP-User]\ Generate\ Specs
+# > .../FBReactNativeSpec.build/Script-F45532E0C9BBF654A0883132EA6E54FB.sh
+unset npm_config_prefix
+unset PREFIX
+
 set -e
 
 # Define NVM_DIR and source the nvm.sh setup script
