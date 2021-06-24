@@ -62,6 +62,12 @@ main() {
     exit 1
   fi
 
+  # Make sure we're in the directory where the React Native binary lives.
+  # Works around issues where the user's .bashrc has a "cd XXX"
+  # and should be removable in 0.65 since this script has its logic
+  # changed significantly
+  cd "$RN_DIR/../.." || exit 1
+
   CODEGEN_PATH=$("$NODE_BINARY" -e "console.log(require('path').dirname(require.resolve('react-native-codegen/package.json')))")
 
   # Special case for running CodeGen from source: build it
