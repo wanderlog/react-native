@@ -12,6 +12,8 @@
 
 const Batchinator = require('../Interaction/Batchinator');
 const FillRateHelper = require('./FillRateHelper');
+const Keyboard = require('../Components/Keyboard/Keyboard');
+const Platform = require('../Utilities/Platform');
 const ReactNative = require('../Renderer/shims/ReactNative');
 const RefreshControl = require('../Components/RefreshControl/RefreshControl');
 const ScrollView = require('../Components/ScrollView/ScrollView');
@@ -741,6 +743,8 @@ class VirtualizedList extends React.PureComponent<Props, State> {
         parentDebugInfo: this.context.debugInfo,
       });
     }
+
+    this._addAndroidKeyboardListener();
   }
 
   componentWillUnmount() {
@@ -760,6 +764,9 @@ class VirtualizedList extends React.PureComponent<Props, State> {
       tuple.viewabilityHelper.dispose();
     });
     this._fillRateHelper.deactivateAndFlush();
+    if (this._androidKeyboardListener) {
+      this._androidKeyboardListener.remove();
+    }
   }
 
   static getDerivedStateFromProps(newProps: Props, prevState: State): State {
@@ -1160,6 +1167,10 @@ class VirtualizedList extends React.PureComponent<Props, State> {
     }
   }
 
+  // On Android, we listen to keyboard opens and ignore layout events that
+  // shrink the height shortly after.
+  _androidKeyboardListener = null;
+  _androidLastKeyboardShowTimeMs: number | null = null;
   _averageCellLength = 0;
   // Maps a cell key to the set of keys for all outermost child lists within that cell
   _cellKeysToChildListKeys: Map<string, Set<string>> = new Map();
@@ -1200,6 +1211,7 @@ class VirtualizedList extends React.PureComponent<Props, State> {
   _totalCellsMeasured = 0;
   _updateCellsToRenderBatcher: Batchinator;
   _viewabilityTuples: Array<ViewabilityHelperCallbackTuple> = [];
+  _visibleWidth = 0;
 
   _captureScrollRef = ref => {
     this._scrollRef = ref;
@@ -1349,9 +1361,33 @@ class VirtualizedList extends React.PureComponent<Props, State> {
       // VirtualizedList before we can make claims about list item viewability
       this.measureLayoutRelativeToContainingList();
     } else {
-      this._scrollMetrics.visibleLength = this._selectLength(
-        e.nativeEvent.layout,
-      );
+      const newVisibleWidth = this._selectWidth(e.nativeEvent.layout);
+      const newVisibleLength = this._selectLength(e.nativeEvent.layout);
+
+      // Don't update the visible length on Android for keyboard opens, as
+      // that can cause the list to shift unexpectedly when the keyboard closes
+      // again
+      let shouldUpdateVisibleLength = true;
+      if (this._androidLastKeyboardShowTimeMs !== null) {
+        const keyboardDidShowRecently =
+          Date.now() - this._androidLastKeyboardShowTimeMs < 2000;
+        // We verified via. console.log that the keyboard listener gets
+        // called before this `_onLayout` callback. We assume this is a
+        // keyboard layout event if it only changed the length to be smaller
+        // without changing the width.
+        if (
+          keyboardDidShowRecently &&
+          newVisibleLength < this._scrollMetrics.visibleLength &&
+          newVisibleWidth === this._visibleWidth
+        ) {
+          shouldUpdateVisibleLength = false;
+        }
+      }
+
+      this._visibleWidth = newVisibleWidth;
+      if (shouldUpdateVisibleLength) {
+        this._scrollMetrics.visibleLength = newVisibleLength;
+      }
     }
     this.props.onLayout && this.props.onLayout(e);
     this._scheduleCellsToRenderUpdate();
@@ -1443,6 +1479,16 @@ class VirtualizedList extends React.PureComponent<Props, State> {
     }>,
   ): number {
     return !this.props.horizontal ? metrics.height : metrics.width;
+  }
+
+  _selectWidth(
+    metrics: $ReadOnly<{
+      height: number,
+      width: number,
+      ...
+    }>,
+  ): number {
+    return !this.props.horizontal ? metrics.width : metrics.height;
   }
 
   _selectOffset(
@@ -1837,6 +1883,17 @@ class VirtualizedList extends React.PureComponent<Props, State> {
         this.state,
       );
     });
+  }
+
+  _addAndroidKeyboardListener = () => {
+    if (Platform.OS === 'android' && !this._androidKeyboardListener) {
+      this._androidKeyboardListener = Keyboard.addListener(
+        'keyboardDidShow',
+        () => {
+          this._androidLastKeyboardShowTimeMs = Date.now();
+        },
+      );
+    }
   }
 }
 
