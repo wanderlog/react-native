@@ -8,7 +8,6 @@
 package com.facebook.react.views.textinput;
 
 import static com.facebook.react.uimanager.UIManagerHelper.getReactContext;
-import static com.facebook.react.views.text.TextAttributeProps.UNSET;
 
 import android.content.Context;
 import android.graphics.Rect;
@@ -50,6 +49,7 @@ import com.facebook.react.views.text.CustomLetterSpacingSpan;
 import com.facebook.react.views.text.CustomLineHeightSpan;
 import com.facebook.react.views.text.CustomStyleSpan;
 import com.facebook.react.views.text.ReactAbsoluteSizeSpan;
+import com.facebook.react.views.text.ReactBaseTextShadowNode;
 import com.facebook.react.views.text.ReactSpan;
 import com.facebook.react.views.text.ReactTextUpdate;
 import com.facebook.react.views.text.ReactTypefaceUtils;
@@ -462,6 +462,12 @@ public class ReactEditText extends AppCompatEditText
 
   public void setFontWeight(String fontWeightString) {
     int fontWeight = ReactTypefaceUtils.parseFontWeight(fontWeightString);
+    if (fontWeight == ReactBaseTextShadowNode.UNSET) {
+      // If a user removes a `fontWeight: 'bold'`, they would get UNSET as the
+      // fontWeight. ReactTypefaceUtils doesn't remove the bold style. We
+      // explicitly set it to NORMAL to ensure it resets as expected
+      fontWeight = Typeface.NORMAL;
+    }
     if (fontWeight != mFontWeight) {
       mFontWeight = fontWeight;
       mTypefaceDirty = true;
@@ -470,6 +476,12 @@ public class ReactEditText extends AppCompatEditText
 
   public void setFontStyle(String fontStyleString) {
     int fontStyle = ReactTypefaceUtils.parseFontStyle(fontStyleString);
+    if (fontStyle == ReactBaseTextShadowNode.UNSET) {
+      // If a user removes a `fontStyle: 'italic'`, they would get UNSET as the
+      // fontStyle. ReactTypefaceUtils doesn't remove the italic style. We
+      // explicitly set it to NORMAL to ensure it resets as expected
+      fontStyle = Typeface.NORMAL;
+    }
     if (fontStyle != mFontStyle) {
       mFontStyle = fontStyle;
       mTypefaceDirty = true;
