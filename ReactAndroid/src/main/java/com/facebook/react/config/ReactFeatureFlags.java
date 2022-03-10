@@ -42,6 +42,9 @@ public class ReactFeatureFlags {
    */
   public static boolean useViewManagerDelegatesForCommands = false;
 
+  /** Feature flag to configure synchronized queue access for Animated module */
+  public static boolean enableSynchronizationForAnimated = false;
+
   /**
    * This react flag enables a custom algorithm for the getChildVisibleRect() method in the classes
    * ReactViewGroup, ReactHorizontalScrollView and ReactScrollView.
