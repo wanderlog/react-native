@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -170,6 +170,8 @@ export type ReturnKeyType =
   | 'join'
   | 'route'
   | 'yahoo';
+
+export type ReturnKeyAction =  'submit' | 'blurAndSubmit' | 'newline';
 
 export type AutoCapitalize = 'none' | 'sentences' | 'words' | 'characters';
 
@@ -669,8 +671,33 @@ export type Props = $ReadOnly<{|
    * multiline fields. Note that for multiline fields, setting `blurOnSubmit`
    * to `true` means that pressing return will blur the field and trigger the
    * `onSubmitEditing` event instead of inserting a newline into the field.
+   *
+   * @deprecated
+   * Note that `returnKeyAction` now takes the place of `blurOnSubmit` and will
+   * override any behavior defined by `blurOnSubmit`.
+   * @see returnKeyAction
    */
   blurOnSubmit?: ?boolean,
+
+  /**
+   * When the return key is pressed,
+   *
+   * For single line inputs:
+   *
+   * - `'newline`' defaults to `'blurAndSubmit'`
+   * - `undefined` defaults to `'blurAndSubmit'`
+   *
+   * For multiline inputs:
+   *
+   * - `'newline'` adds a newline
+   * - `undefined` defaults to `'newline'`
+   *
+   * For both single line and multiline inputs:
+   *
+   * - `'submit'` will only send a submit event and not blur the input
+   * - `'blurAndSubmit`' will both blur the input and send a submit event
+   */
+  returnKeyAction?: ?ReturnKeyAction;
 
   /**
    * Note that not all Text styles are supported, an incomplete list of what is not supported includes:
@@ -1067,9 +1094,31 @@ function InternalTextInput(props: Props): React.Node {
     // This is a hack to let Flow know we want an exact object
   |} = {...null};
 
-  // The default value for `blurOnSubmit` is true for single-line fields and
-  // false for multi-line fields.
-  const blurOnSubmit = props.blurOnSubmit ?? !props.multiline;
+  let returnKeyAction: ReturnKeyAction;
+  if (props.returnKeyAction) {
+    // `returnKeyAction` is set explicitly
+    if (!props.multiline && returnKeyAction === 'newline') {
+      // For single line text inputs, `'newline'` is not a valid option
+      returnKeyAction = 'blurAndSubmit';
+    } else {
+      returnKeyAction = props.returnKeyAction;
+    }
+  } else if (props.multiline) {
+    if (props.blurOnSubmit) {
+      returnKeyAction = 'blurAndSubmit';
+    } else {
+      returnKeyAction = 'newline';
+    }
+  } else {
+    // Single line
+    if (props.blurOnSubmit) {
+      returnKeyAction = 'blurAndSubmit'
+    } else if (props.blurOnSubmit === false) {
+      returnKeyAction = 'submit';
+    } else {
+      returnKeyAction = 'blurAndSubmit';
+    }
+  }
 
   if (Platform.OS === 'ios') {
     const RCTTextInputView = props.multiline
@@ -1087,7 +1136,9 @@ function InternalTextInput(props: Props): React.Node {
       <RCTTextInputView
         ref={_setNativeRef}
         {...props}
-        blurOnSubmit={blurOnSubmit}
+        accessible={accessible}
+        returnKeyAction={returnKeyAction}
+        caretHidden={caretHidden}
         dataDetectorTypes={props.dataDetectorTypes}
         mostRecentEventCount={mostRecentEventCount}
         onBlur={_onBlur}
@@ -1122,7 +1173,7 @@ function InternalTextInput(props: Props): React.Node {
         ref={_setNativeRef}
         {...props}
         autoCapitalize={autoCapitalize}
-        blurOnSubmit={blurOnSubmit}
+        returnKeyAction={returnKeyAction}
         children={children}
         disableFullscreenUI={props.disableFullscreenUI}
         mostRecentEventCount={mostRecentEventCount}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -165,11 +165,11 @@ AndroidTextInputProps::AndroidTextInputProps(
           "selectTextOnFocus",
           sourceProps.selectTextOnFocus,
           {false})),
-      blurOnSubmit(convertRawProp(
+      returnKeyAction(convertRawProp(
           rawProps,
-          "blurOnSubmit",
-          sourceProps.blurOnSubmit,
-          {false})),
+           "returnKeyAction",
+          sourceProps.returnKeyAction,
+          {})),
       caretHidden(convertRawProp(
           rawProps,
           "caretHidden",
@@ -322,7 +322,7 @@ folly::dynamic AndroidTextInputProps::getDynamic() const {
   props["value"] = value;
   props["defaultValue"] = defaultValue;
   props["selectTextOnFocus"] = selectTextOnFocus;
-  props["blurOnSubmit"] = blurOnSubmit;
+  props["returnKeyAction"] = returnKeyAction;
   props["caretHidden"] = caretHidden;
   props["contextMenuHidden"] = contextMenuHidden;
   props["textShadowColor"] = toDynamic(textShadowColor);

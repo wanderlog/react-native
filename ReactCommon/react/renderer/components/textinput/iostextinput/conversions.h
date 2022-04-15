@@ -120,6 +120,30 @@ inline void fromRawValue(const RawValue &value, ReturnKeyType &result) {
 
 inline void fromRawValue(
     const RawValue &value,
+    ReturnKeyAction &result) {
+  auto string = (std::string)value;
+  if (string == "default") {
+    result = ReturnKeyAction::Default;
+    return;
+  }
+  if (string == "newline") {
+    result = ReturnKeyAction::Newline;
+    return;
+  }
+  if (string == "submit") {
+    result = ReturnKeyAction::Submit;
+    return;
+  }
+  if (string == "blurAndSubmit") {
+    result = ReturnKeyAction::BlurAndSubmit;
+    return;
+  }
+  abort();
+}
+
+inline void fromRawValue(
+    const PropsParserContext &context,
+    const RawValue &value,
     TextInputAccessoryVisibilityMode &result) {
   auto string = (std::string)value;
   if (string == "never") {

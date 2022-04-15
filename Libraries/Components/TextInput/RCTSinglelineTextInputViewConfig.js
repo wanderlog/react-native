@@ -107,7 +107,7 @@ const RCTSinglelineTextInputViewConfig = {
     keyboardType: true,
     selection: true,
     returnKeyType: true,
-    blurOnSubmit: true,
+    returnKeyAction: true,
     mostRecentEventCount: true,
     onChange: true,
     scrollEnabled: true,

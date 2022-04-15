@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -63,6 +63,8 @@ export type ReturnKeyType =
   | 'join'
   | 'route'
   | 'yahoo';
+
+export type ReturnKeyAction =  'submit' | 'blurAndSubmit' | 'newline';
 
 export type NativeProps = $ReadOnly<{|
   // This allows us to inherit everything from ViewProps except for style (see below)
@@ -469,8 +471,33 @@ export type NativeProps = $ReadOnly<{|
    * multiline fields. Note that for multiline fields, setting `blurOnSubmit`
    * to `true` means that pressing return will blur the field and trigger the
    * `onSubmitEditing` event instead of inserting a newline into the field.
+   *
+   * @deprecated
+   * Note that `returnKeyAction` now takes the place of `blurOnSubmit` and will
+   * override any behavior defined by `blurOnSubmit`.
+   * @see returnKeyAction
    */
   blurOnSubmit?: ?boolean,
+
+  /**
+   * When the return key is pressed,
+   *
+   * For single line inputs:
+   *
+   * - `'newline`' defaults to `'blurAndSubmit'`
+   * - `undefined` defaults to `'blurAndSubmit'`
+   *
+   * For multiline inputs:
+   *
+   * - `'newline'` adds a newline
+   * - `undefined` defaults to `'newline'`
+   *
+   * For both single line and multiline inputs:
+   *
+   * - `'submit'` will only send a submit event and not blur the input
+   * - `'blurAndSubmit`' will both blur the input and send a submit event
+   */
+  returnKeyAction?: ?ReturnKeyAction;
 
   /**
    * Note that not all Text styles are supported, an incomplete list of what is not supported includes:
