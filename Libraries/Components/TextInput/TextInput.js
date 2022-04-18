@@ -1136,9 +1136,7 @@ function InternalTextInput(props: Props): React.Node {
       <RCTTextInputView
         ref={_setNativeRef}
         {...props}
-        accessible={accessible}
         returnKeyAction={returnKeyAction}
-        caretHidden={caretHidden}
         dataDetectorTypes={props.dataDetectorTypes}
         mostRecentEventCount={mostRecentEventCount}
         onBlur={_onBlur}
