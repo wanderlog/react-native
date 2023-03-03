@@ -42,3 +42,6 @@ rebase on upstream's `main`
 - Fix VirtualizedList jumping on Android keyboard open with wrong getItemLayout
   - Summary: Our list was jumping when the keyboard opened, so we made Android lists ignore keyboard openings.
   - Pull request: https://github.com/facebook/react-native/pull/32268
+- Fix RTL content jumping
+  - Summary: This fixes an Android issue with horizontal ScrollViews being very jittery when in RTL mode.
+  - Commit: https://github.com/facebook/react-native/commit/fc032cd8d889d828edad3ea4b735205092cf0d40
