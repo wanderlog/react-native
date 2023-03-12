@@ -13,7 +13,9 @@ build_type = ENV['PRODUCTION'] == "1" ? :release : :debug
 
 # package.json
 package = JSON.parse(File.read(File.join(react_native_path, "package.json")))
-version = package['version']
+# We patch this so to remove the -wanderlog.X part of this, since we don't
+# release our own version of hermes-engine
+version = package['version'].split('-').first
 
 # sdks/.hermesversion
 hermestag_file = File.join(react_native_path, "sdks", ".hermesversion")
