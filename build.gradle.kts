@@ -122,6 +122,19 @@ tasks.register("publishAllToMavenTempLocal") {
   dependsOn(":ReactAndroid:hermes-engine:publishAllPublicationsToMavenTempLocalRepository")
 }
 
+tasks.register("publishAllToGitLab") {
+  description = "Publish all the release artifacts to a GitLab Maven Repository."
+
+  val gitlabKey = project.property("gitlabPrivateToken") as? String
+  if (gitlabKey == null) {
+    throw IllegalStateException("gitlabPrivateToken property is not set. Set it in your ~/.gradle/gradle.properties file to a full-access token")
+  }
+
+  // The Release pubName is derived by searching for MavenPublication in the codebase
+  dependsOn(":ReactAndroid:publishAllPublicationsToGitLabRepository")
+  dependsOn(":ReactAndroid:hermes-engine:publishAllPublicationsToGitLabRepository")
+}
+
 tasks.register("publishAllToSonatype") {
   description = "Publish all the artifacts to Sonatype (Maven Central or Snapshot repository)"
   dependsOn(":ReactAndroid:publishToSonatype")
