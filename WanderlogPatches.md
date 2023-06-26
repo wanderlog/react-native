@@ -48,3 +48,6 @@ rebase on upstream's `main`
 - Prevent crash when runAnimationStep called with low frameTimeNanos
   - Summary: React Native was crashing on OnePlus and Oppo devices. This is a workaround
   - Pull request: https://github.com/facebook/react-native/pull/37487
+- Wrap NullPointerExceptions when thrown by native code called from JS for readability
+  - Summary: These crashing exceptions were really hard to debug in Bugsnag since they don't print the method name. We wrap it and add that.
+  - Pull request: https://github.com/facebook/react-native/pull/38060
