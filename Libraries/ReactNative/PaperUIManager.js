@@ -105,6 +105,23 @@ const UIManagerJS = {
   hasViewManagerConfig(viewManagerName: string): boolean {
     return getViewManagerConfig(viewManagerName) != null;
   },
+  dispatchViewManagerCommand(
+    reactTag: number,
+    commandName: number | string,
+    commandArgs: any[],
+  ) {
+    if (typeof reactTag !== 'number') {
+      let stringifiedArgs = '(failed to stringify)';
+      try {
+        stringifiedArgs = JSON.stringify(commandArgs);
+      } catch (err) {
+        // Do nothing. We have a default message
+      }
+      throw new Error(`dispatchViewManagerCommand: found null reactTag with args ${commandArgs}`);
+    }
+
+    return NativeUIManager.dispatchViewManagerCommand(reactTag, commandName, commandArgs);
+  },
 };
 
 // TODO (T45220498): Remove this.
