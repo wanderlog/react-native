@@ -10,6 +10,9 @@ package com.facebook.react.bridge;
 import static com.facebook.infer.annotation.Assertions.assertNotNull;
 import static com.facebook.systrace.Systrace.TRACE_TAG_REACT_JAVA_BRIDGE;
 
+import android.text.Editable;
+import android.text.SpannableStringBuilder;
+
 import androidx.annotation.Nullable;
 import com.facebook.debug.holder.PrinterHolder;
 import com.facebook.debug.tags.ReactDebugOverlayTags;
@@ -356,7 +359,7 @@ public class JavaMethodWrapper implements NativeModule.NativeMethod {
               mArgumentExtractors[i].extractArgument(jsInstance, parameters, jsArgumentsConsumed);
           jsArgumentsConsumed += mArgumentExtractors[i].getJSArgumentsNeeded();
         }
-      } catch (UnexpectedNativeTypeException e) {
+      } catch (UnexpectedNativeTypeException | NullPointerException e) {
         throw new NativeArgumentsParseException(
             e.getMessage()
                 + " (constructing arguments for "
@@ -364,27 +367,34 @@ public class JavaMethodWrapper implements NativeModule.NativeMethod {
                 + " at argument index "
                 + getAffectedRange(
                     jsArgumentsConsumed, mArgumentExtractors[i].getJSArgumentsNeeded())
-                + ")",
+                + ") with parameters "
+                + parameters.toArrayList(),
             e);
       }
 
       try {
         mMethod.invoke(mModuleWrapper.getModule(), mArguments);
-      } catch (IllegalArgumentException ie) {
-        throw new RuntimeException("Could not invoke " + traceName, ie);
-      } catch (IllegalAccessException iae) {
-        throw new RuntimeException("Could not invoke " + traceName, iae);
+      } catch (IllegalArgumentException | IllegalAccessException e) {
+        throw new RuntimeException(createInvokeExceptionMessage(traceName, parameters), e);
       } catch (InvocationTargetException ite) {
         // Exceptions thrown from native module calls end up wrapped in InvocationTargetException
         // which just make traces harder to read and bump out useful information
         if (ite.getCause() instanceof RuntimeException) {
           throw (RuntimeException) ite.getCause();
         }
-        throw new RuntimeException("Could not invoke " + traceName, ite);
+        throw new RuntimeException(createInvokeExceptionMessage(traceName, parameters), ite);
       }
     } finally {
       SystraceMessage.endSection(TRACE_TAG_REACT_JAVA_BRIDGE).flush();
     }
+  }
+
+  /**
+   * Makes it easier to determine the cause of an error invoking a native method from Javascript
+   * code by adding the function and parameters.
+   */
+  private static String createInvokeExceptionMessage(String traceName, ReadableArray parameters) {
+    return "Could not invoke " + traceName + " with parameters " + parameters.toArrayList();
   }
 
   /**
