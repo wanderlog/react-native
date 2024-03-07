@@ -51,3 +51,6 @@ rebase on upstream's `main`
 - Wrap NullPointerExceptions when thrown by native code called from JS for readability
   - Summary: These crashing exceptions were really hard to debug in Bugsnag since they don't print the method name. We wrap it and add that.
   - Pull request: https://github.com/facebook/react-native/pull/38060
+- Fix flipper for Xcode 15.3
+  - Summary: Official upstream patch: Xcode 15.3 requires us to add a new import of #include <functional> to ios/Pods/Flipper/xplat/Flipper/FlipperTransportTypes.h
+  - Pull request: https://github.com/facebook/react-native/pull/43345
