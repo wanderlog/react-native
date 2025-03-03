@@ -48,3 +48,6 @@ rebase on upstream's `main`
 - Prevent crash when runAnimationStep called with low frameTimeNanos
   - Summary: React Native was crashing on OnePlus and Oppo devices. This is a workaround
   - Pull request: https://github.com/facebook/react-native/pull/37487
+- Fixed boost download path for iOS
+  - Summary: The previous download for boost, required by React Native, no longer works. Updated the download to match the one currently pulled by react-native. This is a Wanderlog-only patch to match our fork to what's currently on React Native.
+  - Pull request: https://github.com/wanderlog/react-native/pull/6
