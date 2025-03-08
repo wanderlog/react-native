@@ -10,8 +10,10 @@ Pod::Spec.new do |spec|
   spec.homepage = 'http://www.boost.org'
   spec.summary = 'Boost provides free peer-reviewed portable C++ source libraries.'
   spec.authors = 'Rene Rivera'
-  spec.source = { :http => 'https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2',
-                  :sha256 => 'f0397ba6e982c4450f27bf32a2a83292aba035b827a5623a14636ea583318c41' }
+  # Previous source no longer works, so we need to update to new source of the same version.
+  # See GitHub thread discussing this issue: https://github.com/boostorg/boost/issues/843#issuecomment-2602280364
+  spec.source = { :http => 'https://archives.boost.io/release/1.76.0/source/boost_1_76_0.tar.gz',
+                  :sha256 => '7bd7ddceec1a1dfdcbdb3e609b60d01739c38390a5f956385a12f3122049f0ca' }
 
   # Pinning to the same version as React.podspec.
   spec.platforms = { :ios => min_ios_version_supported }
