@@ -54,3 +54,6 @@ rebase on upstream's `main`
 - Fix flipper for Xcode 15.3
   - Summary: Official upstream patch: Xcode 15.3 requires us to add a new import of #include <functional> to ios/Pods/Flipper/xplat/Flipper/FlipperTransportTypes.h
   - Pull request: https://github.com/facebook/react-native/pull/43345
+- Fixed boost download path for iOS & Android builds
+  - Summary: The previous download for boost, required by React Native, no longer works. Updated the download to match the one currently pulled by react-native. This is a Wanderlog-only patch to match our fork to what's currently on React Native.
+  - Pull request: https://github.com/wanderlog/react-native/pull/8
