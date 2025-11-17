@@ -68,6 +68,27 @@ publishing {
             name = "mavenTempLocal"
             url = mavenTempLocalUrl
         }
+
+        // Added to allow us to publish patched Android JARs to Gitlab. This
+        // is part of the "Patching React Native" process at:
+        // https://www.notion.so/wanderlog/Patching-React-Native-17b4797ed24d481eb2155c9daec1ba98?source=copy_link
+        //
+        // Added based on https://docs.gitlab.com/ee/user/packages/gradle_repository/#authenticate-with-a-personal-access-token-or-deploy-token-in-gradle
+        // to publish our forked package to Maven
+        maven {
+            // URL modified based on https://docs.gitlab.com/ee/api/packages/maven.html#upload-a-package-file
+            // Project ID is obtained from the itineraries project on Gitlab
+            url = "https://gitlab.com/api/v4/projects/9347980/packages/maven"
+            name = "GitLab"
+            // Modified based on https://stackoverflow.com/a/61339469
+            credentials(HttpHeaderCredentials) {
+                name = "Private-Token"
+                value = project.property("gitlabPrivateToken")
+            }
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+        }
     }
 
     if (signingKey && signingPwd) {

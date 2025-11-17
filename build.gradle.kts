@@ -100,6 +100,22 @@ tasks.register("publishAllToMavenTempLocal") {
       ":packages:react-native:ReactAndroid:hermes-engine:publishAllPublicationsToMavenTempLocalRepository")
 }
 
+// Added to allow us to publish patched Android JARs to Gitlab. This is part
+// of the "Patching React Native" process at:
+// https://www.notion.so/wanderlog/Patching-React-Native-17b4797ed24d481eb2155c9daec1ba98?source=copy_link
+tasks.register("publishAllToGitLab") {
+  description = "Publish all the release artifacts to a GitLab Maven Repository."
+
+  val gitlabKey = project.property("gitlabPrivateToken") as? String
+  if (gitlabKey == null) {
+    throw IllegalStateException("gitlabPrivateToken property is not set. Set it in your ~/.gradle/gradle.properties file to a full-access token")
+  }
+
+  // The Release pubName is derived by searching for MavenPublication in the codebase
+  dependsOn(":packages:react-native:ReactAndroid:publishAllPublicationsToGitLabRepository")
+  dependsOn(":packages:react-native:ReactAndroid:hermes-engine:publishAllPublicationsToGitLabRepository")
+}
+
 tasks.register("publishAndroidToSonatype") {
   description = "Publish the Android artifacts to Sonatype (Maven Central or Snapshot repository)"
   dependsOn(":packages:react-native:ReactAndroid:publishToSonatype")
