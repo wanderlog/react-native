@@ -15,11 +15,7 @@ const {cp, exec} = require('shelljs');
  * This section goes over how we created it:
  * ["How did we figure out the steps for Create scripts for building patched React Native](https://www.notion.so/wanderlog/Patching-React-Native-17b4797ed24d481eb2155c9daec1ba98?source=copy_link#2aef9a6861f68016a0def8edec2d3d5a)
  * 
- * Much of this code is copied from buildArtifactsLocally in
- * scripts/release-testing/utils/testing-utils.js
- *
- * The main goal is to build hermesc so it can be checked in to our built
- * version.
+ * This code is largely copied from other files per the comments below.
  * 
  * If this script fails, we can debug it by running it with `CI=true` to see
  * all the intermediate commands the Shell scripts run, since the scripts
@@ -28,6 +24,7 @@ const {cp, exec} = require('shelljs');
 async function buildPackage() {
   const reactNativePackagePath = `${REPO_ROOT}/packages/react-native`;
 
+  // This part of the code downloads the Hermes source code and expands it.
   // Start copied from scripts/release-testing/utils/testing-utils.js
   const hermesCoreSourceFolder = `${reactNativePackagePath}/sdks/hermes`;
 
@@ -56,26 +53,36 @@ async function buildPackage() {
   // Builds the types_generated. We figured this out by asking:
   // "What code in this project creates the types_generated directory?"
   exec('yarn build-types', {cwd: REPO_ROOT});
+
   // Builds the FBReactNativeSpec. We figured this out by asking:
   // "What code in this project creates the FBReactNativeSpec directory?"
   exec('yarn install && yarn prepack', {cwd: reactNativePackagePath});
   // We don't need the README.md file
   await rm(`${reactNativePackagePath}/README.md`);
 
-  process.env.MAC_DEPLOYMENT_TARGET = "10.15";
-
-  // This command builds hermes and hermesc binaries for MacOS. I figured out
-  // this by:
+  // build-mac-framework.sh builds hermes and hermesc binaries for MacOS.
+  // I figured this out by:
   //
-  // 1. Running `find . -name hermes` and seeing that the file was in
+  // 1. Running the code in `buildAllArtifacts` below (uncomment the line)
+  //    below
+  // 2. Running `find . -name hermes` and seeing that the file was in
   //    `./packages/react-native/sdks/hermes/build_macosx/bin/hermes`
-  // 2. Finding references to build_macosx and seeing it was likely created
+  // 3. Finding references to build_macosx and seeing it was likely created
   //    by the build_apple_framework function
-  // 3. Finding callers of the build_apple_framework function
+  // 4. Finding callers of the build_apple_framework function
+
+  // MAC_DEPLOYMENT_TARGET is used by get_mac_deployment_target in
+  // build-mac-framework.sh. The value to set is taken from
+  // publish-release.yml
+  process.env.MAC_DEPLOYMENT_TARGET = "10.15";
   exec(
     'bash ./utils/build-mac-framework.sh',
     {cwd: `${reactNativePackagePath}/sdks/hermes`},
   );
+
+  // Uncomment this to build all the artifacts for Hermes, including ones that we
+  // don't need.
+  // buildAllArtifacts(hermesCoreSourceFolder);
 
   // We figured out the files to copy by running:
   // `find . -name hermesc` and and `find . -name hermes | grep bin`
@@ -90,6 +97,36 @@ async function buildPackage() {
   await fs.promises.mkdir(destinationDir, { recursive: true });
   cp('-r', `${hermesDir}/*`, `${destinationDir}/`);
   cp('-r', `${hermescDir}/*`, `${destinationDir}/`);
+}
+
+/**
+ * This function builds all the artifacts for Hermes, including ones that we
+ * don't need. We used it initially to figure out which subtasks built the hermes
+ * and hermesc binaries.
+ */
+// eslint-disable-next-line no-unused-vars
+function buildAllArtifacts(hermesCoreSourceFolder) {
+  // These versions were copied from publish-release.yml
+  process.env.IOS_DEPLOYMENT_TARGET = '15.1';
+  process.env.MAC_DEPLOYMENT_TARGET = '10.15';
+  process.env.XROS_DEPLOYMENT_TARGET = '1.0';
+
+  // Start copied from scripts/release-testing/utils/testing-utils.js
+  const jsiFolder = `${reactNativePackagePath}/ReactCommon/jsi`;
+
+  const buildTypeiOSArtifacts = 'Debug';
+
+  // the android ones get set into /private/tmp/maven-local
+  const localMavenPath = '/private/tmp/maven-local';
+
+  // Generate native files for iOS
+  generateiOSArtifacts(
+    jsiFolder,
+    hermesCoreSourceFolder,
+    buildTypeiOSArtifacts,
+    localMavenPath,
+  );
+  // End copied from scripts/release-testing/utils/testing-utils.js
 }
 
 buildPackage();
