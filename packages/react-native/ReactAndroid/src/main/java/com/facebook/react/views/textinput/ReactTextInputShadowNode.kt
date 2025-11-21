@@ -35,9 +35,11 @@ import com.facebook.yoga.YogaMeasureMode
 import com.facebook.yoga.YogaMeasureOutput
 import com.facebook.yoga.YogaNode
 
+// We removed the `internal` from `internal class` because this is still used
+// by react-native-aztec
 @LegacyArchitecture(logLevel = LegacyArchitectureLogLevel.ERROR)
 @LegacyArchitectureShadowNodeWithCxxImpl
-internal class ReactTextInputShadowNode
+public open class ReactTextInputShadowNode
 @JvmOverloads
 constructor(reactTextViewManagerCallback: ReactTextViewManagerCallback? = null) :
     ReactBaseTextShadowNode(reactTextViewManagerCallback), YogaMeasureFunction {
@@ -47,14 +49,14 @@ constructor(reactTextViewManagerCallback: ReactTextViewManagerCallback? = null) 
 
   // Represents the `text` property only, not possible nested content.
   @set:ReactProp(name = PROP_TEXT)
-  var text: String? = null
+  public var text: String? = null
     set(value) {
       field = value
       markUpdated()
     }
 
   @set:ReactProp(name = PROP_PLACEHOLDER)
-  var placeholder: String? = null
+  public var placeholder: String? = null
     set(value) {
       field = value
       markUpdated()
@@ -194,7 +196,7 @@ constructor(reactTextViewManagerCallback: ReactTextViewManagerCallback? = null) 
    * May be overridden by subclasses that would like to provide their own instance of the internal
    * `EditText` this class uses to determine the expected size of the view.
    */
-  private fun createInternalEditText(): EditText {
+  protected fun createInternalEditText(): EditText {
     // By setting a style which has a background drawable, this EditText will have a different
     // background drawable instance from that on the UI Thread, which maybe has a default background
     // drawable instance.
@@ -204,10 +206,10 @@ constructor(reactTextViewManagerCallback: ReactTextViewManagerCallback? = null) 
     return EditText(context)
   }
 
-  companion object {
-    const val PROP_TEXT: String = "text"
+  public companion object {
+    public const val PROP_TEXT: String = "text"
 
-    const val PROP_PLACEHOLDER: String = "placeholder"
+    public const val PROP_PLACEHOLDER: String = "placeholder"
 
     init {
       LegacyArchitectureLogger.assertLegacyArchitecture(
