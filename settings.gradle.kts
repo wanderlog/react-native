@@ -5,40 +5,27 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// This is the settings.gradle.kts file used when the users
+// is doing a build from source. It's triggered as the user
+// will add an `includeBuild(../node_modules/react-native)` in
+// their settings.gradle.kts file.
+// More on this here: https://reactnative.dev/contributing/how-to-build-from-source
+
 pluginManagement {
   repositories {
     mavenCentral()
     google()
     gradlePluginPortal()
   }
-  includeBuild("packages/gradle-plugin/")
 }
 
-include(
-    ":packages:react-native:ReactAndroid",
-    ":packages:react-native:ReactAndroid:hermes-engine",
-    ":packages:react-native:ReactAndroid:external-artifacts",
-    ":packages:rn-tester:android:app",
-    ":packages:rn-tester:android:app:benchmark",
-    ":private:react-native-fantom",
-)
+rootProject.name = "react-native-build-from-source"
 
-includeBuild("packages/gradle-plugin/")
+include(":packages:react-native:ReactAndroid")
 
-dependencyResolutionManagement {
-  versionCatalogs {
-    create("libs") { from(files("packages/react-native/gradle/libs.versions.toml")) }
-  }
-}
+project(":packages:react-native:ReactAndroid").projectDir = file("ReactAndroid/")
 
-rootProject.name = "react-native-github"
+include(":packages:react-native:ReactAndroid:hermes-engine")
 
-plugins {
-  id("org.gradle.toolchains.foojay-resolver-convention").version("0.5.0")
-  id("com.facebook.react.settings")
-}
-
-configure<com.facebook.react.ReactSettingsExtension> {
-  autolinkLibrariesFromCommand(
-      workingDirectory = file("packages/rn-tester/"), lockFiles = files("yarn.lock"))
-}
+project(":packages:react-native:ReactAndroid:hermes-engine").projectDir =
+    file("ReactAndroid/hermes-engine/")
