@@ -20,7 +20,13 @@ end
 
 # package.json
 package = JSON.parse(File.read(File.join(react_native_path, "package.json")))
-version = package['version']
+
+# We want to use the version without the -wanderlog.X suffix:
+# For example, if the version is 0.81.5-wanderlog.1, we want to use `0.81.5`.
+#
+# This is because we haven't modified Hermes, and it's much faster to just use
+# the prebuilt original version.
+version = package['version'].split('-').first
 
 source_type = hermes_source_type(version, react_native_path)
 source = podspec_source(source_type, version, react_native_path)
