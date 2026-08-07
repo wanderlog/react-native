@@ -16,9 +16,12 @@ import kotlin.math.floor
  * Implements a [LineHeightSpan] which follows web-like behavior for line height, unlike
  * LineHeightSpan.Standard which only effects space between the baselines of adjacent line boxes
  * (does not impact space before the first line or after the last).
+ *
+ * We changed `internal` to `public` because this is still used by
+ * react-native-text-size
  */
-internal class CustomLineHeightSpan(height: Float) : LineHeightSpan, ReactSpan {
-  val lineHeight: Int = ceil(height.toDouble()).toInt()
+public class CustomLineHeightSpan(height: Float) : LineHeightSpan, ReactSpan {
+  public val lineHeight: Int = ceil(height.toDouble()).toInt()
 
   override fun chooseHeight(
       text: CharSequence,
