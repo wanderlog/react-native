@@ -139,12 +139,27 @@ public class NativeAnimatedModule(reactContext: ReactApplicationContext) :
 
     @AnyThread
     fun add(operation: UIThreadOperation) {
-      queue.add(operation)
+      // We added back synchronization by reverting this change:
+      // https://github.com/wanderlog/react-native/commit/b5a40fb4f482a22f2dc749e6253520d3a1d4301c
+      //
+      // This is meant to help prevent "Animated node with tag 123 does not
+      // exists" errors.
+      synchronized(this) {
+        queue.add(operation)
+      }
     }
 
     @UiThread
     fun executeBatch(maxBatchNumber: Long, nodesManager: NativeAnimatedNodesManager?) {
-      val operations = drainQueueIntoList(maxBatchNumber)
+      val operations: List<UIThreadOperation>?
+      // We added back synchronization by reverting this change:
+      // https://github.com/wanderlog/react-native/commit/b5a40fb4f482a22f2dc749e6253520d3a1d4301c
+      //
+      // This is meant to help prevent "Animated node with tag 123 does not
+      // exists" errors.
+      synchronized(this) {
+        operations = drainQueueIntoList(maxBatchNumber)
+      }
       if (operations != null) {
         for (operation in operations) {
           operation.execute(checkNotNull(nodesManager))
