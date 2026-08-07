@@ -1,3 +1,9 @@
+# Wanderlog-specific header
+
+See [**Wanderlog.md**](Wanderlog.md) in this repository
+
+--------
+
 <h1 align="center">
   <a href="https://reactnative.dev/">
     React Native
