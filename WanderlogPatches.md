@@ -7,3 +7,4 @@ rebase on upstream's `master`
 - Create scripts for building patched React Native
 - Avoid race conditions when setting RCTNetworkTask status
 - Fix crashes due to "JS functions are not convertible to dynamic" errors
+- Enable flag to fix "Animated node with tag 123 does not exists" by reverting "Remove flag enable_blocking_queues_for_animated"
