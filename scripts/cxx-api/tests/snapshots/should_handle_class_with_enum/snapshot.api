@@ -1,7 +1,0 @@
-class test::Outer {
-}
-
-enum test::Outer::InnerEnum {
-  Value1,
-  Value2,
-}

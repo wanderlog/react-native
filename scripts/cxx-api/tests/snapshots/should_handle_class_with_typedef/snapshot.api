@@ -1,3 +1,0 @@
-class test::Clss {
-  public typedef int32_t MyInt32;
-}

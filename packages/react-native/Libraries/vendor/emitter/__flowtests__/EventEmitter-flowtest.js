@@ -18,19 +18,19 @@ const emitter = new EventEmitter<{
 }>();
 
 const subscription = emitter.addListener('void', unknown => {
-  unknown as void;
+  (unknown: void);
 });
 subscription.remove();
 
 emitter.addListener('string', foo => {
-  foo as string;
+  (foo: string);
 });
 emitter.addListener('strings', (foo, bar) => {
-  foo as string;
-  bar as string;
+  (foo: string);
+  (bar: string);
 });
 emitter.addListener('error', error => {
-  error as Error;
+  (error: Error);
 });
 
 emitter.emit('void');
@@ -63,7 +63,7 @@ subscription.once;
 
 // $FlowExpectedError[invalid-tuple-arity]
 emitter.emit('void', undefined);
-// $FlowExpectedError[incompatible-type]
+// $FlowExpectedError[incompatible-call]
 emitter.emit('string', 123);
 // $FlowExpectedError[invalid-tuple-arity]
 emitter.emit('strings', 'foo');

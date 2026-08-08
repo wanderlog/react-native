@@ -1,5 +1,0 @@
-struct test::FunctionPointers {
-  public int(*withReturn)(double, float);
-  public void(*simple)(int);
-  public void*(*returnsPointer)(const char *);
-}
