@@ -30,16 +30,16 @@ project.xcworkspace
 /packages/rn-tester/android/app/gradle/
 /packages/rn-tester/android/app/gradlew
 /packages/rn-tester/android/app/gradlew.bat
-/packages/react-native/build/
-/packages/react-native/ReactAndroid/build/
-/packages/react-native/ReactAndroid/.cxx/
-/packages/react-native/ReactAndroid/gradle/
-/packages/react-native/ReactAndroid/gradlew
-/packages/react-native/ReactAndroid/gradlew.bat
-/packages/react-native/ReactAndroid/external-artifacts/build/
-/packages/react-native/ReactAndroid/external-artifacts/artifacts/
-/packages/react-native/ReactAndroid/hermes-engine/build/
-/packages/react-native/ReactAndroid/hermes-engine/.cxx/
+/build/
+/ReactAndroid/build/
+/ReactAndroid/.cxx/
+/ReactAndroid/gradle/
+/ReactAndroid/gradlew
+/ReactAndroid/gradlew.bat
+/ReactAndroid/external-artifacts/build/
+/ReactAndroid/external-artifacts/artifacts/
+/ReactAndroid/hermes-engine/build/
+/ReactAndroid/hermes-engine/.cxx/
 /private/helloworld/android/app/build/
 /private/helloworld/android/build/
 /packages/react-native-popup-menu-android/android/build/
@@ -49,8 +49,8 @@ project.xcworkspace
 buck-out
 /.lsp.buckd
 /.lsp-buck-out
-/packages/react-native/ReactAndroid/src/main/jni/prebuilt/lib/
-/packages/react-native/ReactAndroid/src/main/gen
+/ReactAndroid/src/main/jni/prebuilt/lib/
+/ReactAndroid/src/main/gen
 /.cpplsp.buckd
 
 # Android Studio
@@ -66,8 +66,8 @@ buck-out
 .gradle
 local.properties
 *.iml
-/packages/react-native/android/*
-!/packages/react-native/android/README.md
+/android/*
+!/android/README.md
 .kotlin/
 
 # Node
@@ -95,22 +95,19 @@ package-lock.json
 /*.xcodeproj
 
 # ReactCommon subdir shouldn't have Xcode project
-/packages/react-native/ReactCommon/**/*.xcodeproj
+/ReactCommon/**/*.xcodeproj
 
 # Libs that shouldn't have Xcode project
-/packages/react-native/Libraries/FBLazyVector/**/*.xcodeproj
-/packages/react-native/Libraries/Required/**/*.xcodeproj
-/packages/react-native/React/CoreModules/**/*.xcodeproj
-/packages/react-native/React/FBReactNativeSpec/**/*.xcodeproj
+/Libraries/FBLazyVector/**/*.xcodeproj
+/Libraries/Required/**/*.xcodeproj
+/React/CoreModules/**/*.xcodeproj
 /packages/react-native-codegen/**/*.xcodeproj
 /packages/rn-tester/**/*.xcodeproj
 
 # Ruby Gems (Bundler)
-/packages/react-native/vendor
 /private/helloworld/vendor
 .ruby-version
 /**/.ruby-version
-vendor/
 
 # iOS / CocoaPods
 /private/helloworld/ios/build/
@@ -131,12 +128,11 @@ vendor/
 !/packages/rn-tester/Pods/__offline_mirrors_jsc__
 
 # Swift Package build folder
-/packages/react-native/.build
-/packages/react-native/.swiftpm
-/packages/react-native/React/includes/
+/.build
+/.swiftpm
+/React/includes/
 
 # @react-native/codegen
-/packages/react-native/React/FBReactNativeSpec/
 /packages/react-native-codegen/lib
 /packages/react-native-codegen/tmp/
 /packages/rn-tester/NativeModuleExample/ScreenshotManagerSpec*
@@ -146,13 +142,12 @@ vendor/
 /private/react-native-codegen-typescript-test/lib
 
 # Additional SDKs
-/packages/react-native/sdks/download
-/packages/react-native/sdks/hermes
-/packages/react-native/sdks/hermesc
-/packages/react-native/sdks/hermes-engine/hermes-engine-from-local-source-dir.tar.gz
+/sdks/download
+/sdks/hermes
+/sdks/hermes-engine/hermes-engine-from-local-source-dir.tar.gz
 
 # iOS prebuilds
-/packages/react-native/third-party/
+/third-party/
 fix_*.patch
 *.xcframework
 
@@ -175,13 +170,13 @@ fix_*.patch
 /private/react-native-fantom/tester/build/
 
 # [Experimental] Generated TS type definitions
-/packages/**/types_generated/
 
 # Python
 __pycache__/
 
 # Doxygen XML output used for C++ API tracking
-/packages/react-native/**/api/xml
-/packages/react-native/**/api/codegen
-/packages/react-native/**/.doxygen.config.*.generated
+/**/api/xml
+/**/api/codegen
+/**/.doxygen.config.*.generated
 /scripts/cxx-api/codegen
+/saved-root-files/

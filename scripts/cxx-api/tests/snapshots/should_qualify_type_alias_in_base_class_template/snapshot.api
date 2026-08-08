@@ -1,8 +1,0 @@
-using test::MyType = int;
-
-struct test::Component : public test::Wrapper<test::MyType> {
-}
-
-template <typename T>
-struct test::Wrapper {
-}
