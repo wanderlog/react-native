@@ -1,8 +1,0 @@
-struct folly::dynamic {
-}
-
-
-template <typename R, typename... T>
-R test::jsArg(const folly::dynamic& arg, R(folly::dynamic::*asFoo)() const &, const T &... desc);
-template <typename R, typename... T>
-R test::jsArg(const folly::dynamic& arg, R(folly::dynamic::*asFoo)() const, const T &... desc);

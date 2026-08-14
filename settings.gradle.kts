@@ -5,42 +5,79 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// This is the settings.gradle.kts file used when the users
+// is doing a build from source. It's triggered as the user
+// will add an `includeBuild(../node_modules/react-native)` in
+// their settings.gradle.kts file.
+// More on this here: https://reactnative.dev/contributing/how-to-build-from-source
+
 pluginManagement {
   repositories {
     mavenCentral()
     google()
     gradlePluginPortal()
   }
-  includeBuild("packages/gradle-plugin/")
 }
 
-include(
-    ":packages:react-native:ReactAndroid",
-    ":packages:react-native:ReactAndroid:hermes-engine",
-    ":packages:react-native:ReactAndroid:external-artifacts",
-    ":packages:rn-tester:android:app",
-    ":packages:rn-tester:android:app:benchmark",
-    ":private:react-native-fantom",
-)
+rootProject.name = "react-native-build-from-source"
 
-includeBuild("packages/gradle-plugin/")
+include(":packages:react-native:ReactAndroid")
 
-dependencyResolutionManagement {
-  versionCatalogs {
-    create("libs") { from(files("packages/react-native/gradle/libs.versions.toml")) }
+project(":packages:react-native:ReactAndroid").projectDir = file("ReactAndroid/")
+
+include(":packages:react-native:ReactAndroid:hermes-engine")
+
+project(":packages:react-native:ReactAndroid:hermes-engine").projectDir =
+    file("ReactAndroid/hermes-engine/")
+
+// Since Gradle 9.0, all the projects in the path must have an existing folder.
+// As we build :packages:react-native:ReactAndroid, we need to declare the folders
+// for :packages and :packages:react-native as well as otherwise the build from
+// source will fail with a missing folder exception.
+
+project(":packages").projectDir = file("/tmp")
+
+project(":packages:react-native").projectDir = file("/tmp")
+
+// Gradle properties defined in `gradle.properties` are not inherited by
+// included builds, see https://github.com/gradle/gradle/issues/2534.
+// This is a workaround to read the configuration from the consuming project,
+// and apply relevant properties to the :react-native project.
+buildscript {
+  val properties = java.util.Properties()
+  val propertiesToInherit = listOf("hermesV1Enabled", "react.hermesV1Enabled")
+
+  // We cannot assume that the node_modules are next to the android project, for example
+  // in monorepos, they might get hoisted.
+  // In a composite build, this included build can access the invoking (consumer) build
+  // via `gradle.parent`. We use its StartParameter to locate the app's `gradle.properties`:
+  // - `projectDir/gradle.properties` when Gradle is run with `-p <androidDir>`
+  // - `currentDir/gradle.properties` when run from the app android folder
+  // If neither exists, we keep the legacy RN fallback path below.
+
+  val parentGradle = gradle.parent
+  val parentProjectDir = parentGradle?.startParameter?.projectDir
+  val parentCurrentDir = parentGradle?.startParameter?.currentDir
+  val gradlePropertiesCandidates =
+      listOfNotNull(
+          parentProjectDir?.resolve("gradle.properties"),
+          parentCurrentDir?.resolve("gradle.properties"),
+          // Backward-compatible fallback for classic RN app layouts.
+          file("../../android/gradle.properties"),
+      )
+
+  try {
+    val propertiesFile = gradlePropertiesCandidates.firstOrNull { it.exists() }
+    propertiesFile?.inputStream()?.use { properties.load(it) }
+
+    gradle.rootProject {
+      propertiesToInherit.forEach { property ->
+        if (properties.containsKey(property)) {
+          gradle.rootProject.extra.set(property, properties.getProperty(property))
+        }
+      }
+    }
+  } catch (e: Exception) {
+    // fail silently
   }
-}
-
-rootProject.name = "react-native-github"
-
-plugins {
-  id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0")
-  id("com.facebook.react.settings")
-}
-
-configure<com.facebook.react.ReactSettingsExtension> {
-  autolinkLibrariesFromCommand(
-      workingDirectory = file("packages/rn-tester/"),
-      lockFiles = files("yarn.lock"),
-  )
 }

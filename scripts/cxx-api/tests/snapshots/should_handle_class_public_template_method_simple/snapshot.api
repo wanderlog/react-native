@@ -1,4 +1,0 @@
-class test::Base {
-  template <typename T>
-  public T hello();
-}
