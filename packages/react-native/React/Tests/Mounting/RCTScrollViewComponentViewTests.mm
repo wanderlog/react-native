@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#import <React/RCTMaintainVisibleContentPositionUtils.h>
 #import <React/RCTScrollViewComponentView.h>
 #import <XCTest/XCTest.h>
 #import <react/renderer/components/scrollview/ScrollViewProps.h>
@@ -59,6 +60,73 @@ static Props::Shared makeScrollViewProps(bool automaticallyAdjustKeyboardInsets)
   [view updateProps:props oldProps:nullptr];
   [view _keyboardWillChangeFrame:notification];
   XCTAssertEqual(view.scrollView.contentInset.bottom, 50);
+}
+
+- (NSDictionary *)metricWithStart:(CGFloat)start end:(CGFloat)end
+{
+  return @{@"start" : @(start), @"end" : @(end)};
+}
+
+- (void)testMaintainVisibleContentPositionFindAnchorIndexWithMinIndexZero
+{
+  NSArray<NSDictionary *> *metrics = @[
+    [self metricWithStart:100 end:140],
+    [self metricWithStart:0 end:40],
+    [self metricWithStart:40 end:80],
+  ];
+
+  NSInteger anchorIndex = RCTMVCPTestFindAnchorIndexWithMetrics(metrics, 0, 50);
+  XCTAssertEqual(anchorIndex, 2);
+}
+
+- (void)testMaintainVisibleContentPositionFindAnchorIndexWithMinIndexGreaterThanZero
+{
+  NSArray<NSDictionary *> *metrics = @[
+    [self metricWithStart:100 end:140],
+    [self metricWithStart:0 end:40],
+    [self metricWithStart:40 end:80],
+    [self metricWithStart:80 end:120],
+  ];
+
+  NSInteger anchorIndex = RCTMVCPTestFindAnchorIndexWithMetrics(metrics, 2, 50);
+  XCTAssertEqual(anchorIndex, 3);
+}
+
+- (void)testMaintainVisibleContentPositionLayoutOrderCacheReusesSnapshot
+{
+  RCTMVCPTestInvalidateLayoutOrderCache();
+
+  NSArray<NSDictionary *> *metrics = @[
+    [self metricWithStart:100 end:140],
+    [self metricWithStart:0 end:40],
+    [self metricWithStart:40 end:80],
+  ];
+
+  NSArray<NSNumber *> *first = RCTMVCPTestSortedIndicesForMetrics(metrics, YES);
+  NSArray<NSNumber *> *second = RCTMVCPTestSortedIndicesForMetrics(metrics, YES);
+
+  XCTAssertEqualObjects(first, (@[ @1, @2, @0 ]));
+  XCTAssertEqualObjects(second, first);
+}
+
+- (void)testMaintainVisibleContentPositionLayoutOrderCacheRecomputesAfterLayoutChange
+{
+  RCTMVCPTestInvalidateLayoutOrderCache();
+
+  NSArray<NSDictionary *> *initialMetrics = @[
+    [self metricWithStart:100 end:140],
+    [self metricWithStart:0 end:40],
+  ];
+  NSArray<NSDictionary *> *updatedMetrics = @[
+    [self metricWithStart:0 end:40],
+    [self metricWithStart:100 end:140],
+  ];
+
+  NSArray<NSNumber *> *initialSorted = RCTMVCPTestSortedIndicesForMetrics(initialMetrics, YES);
+  NSArray<NSNumber *> *updatedSorted = RCTMVCPTestSortedIndicesForMetrics(updatedMetrics, YES);
+
+  XCTAssertEqualObjects(initialSorted, (@[ @1, @0 ]));
+  XCTAssertEqualObjects(updatedSorted, (@[ @0, @1 ]));
 }
 
 @end

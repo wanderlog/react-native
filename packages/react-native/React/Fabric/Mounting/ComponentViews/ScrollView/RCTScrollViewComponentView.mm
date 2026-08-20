@@ -23,8 +23,11 @@
 #import "RCTConversions.h"
 #import "RCTCustomPullToRefreshViewProtocol.h"
 #import "RCTEnhancedScrollView.h"
+#import "RCTMaintainVisibleContentPositionUtils.h"
 #import "RCTFabricComponentsPlugins.h"
 #import "RCTVirtualViewContainerState.h"
+
+#include <vector>
 
 using namespace facebook::react;
 
@@ -125,6 +128,8 @@ RCTSendScrollEventForNativeAnimations_DEPRECATED(UIScrollView *scrollView, NSInt
   BOOL _avoidAdjustmentForMaintainVisibleContentPosition;
 
   RCTVirtualViewContainerState *_virtualViewContainerState;
+
+  RCTMVCPLayoutOrderCache *_layoutOrderCache;
 }
 
 + (RCTScrollViewComponentView *_Nullable)findScrollViewComponentViewForView:(UIView *)view
@@ -160,6 +165,7 @@ RCTSendScrollEventForNativeAnimations_DEPRECATED(UIScrollView *scrollView, NSInt
 
     _scrollEventThrottle = 0;
     _endDraggingSensitivityMultiplier = 1;
+    _layoutOrderCache = RCTMVCPCreateLayoutOrderCache();
   }
 
   return self;
@@ -167,6 +173,7 @@ RCTSendScrollEventForNativeAnimations_DEPRECATED(UIScrollView *scrollView, NSInt
 
 - (void)dealloc
 {
+  RCTMVCPLayoutOrderCacheRelease(_layoutOrderCache);
   // Removing all delegates from the splitter nils the actual delegate which prevents a crash on UIScrollView
   // deallocation.
   [self.scrollViewDelegateSplitter removeAllDelegates];
@@ -454,6 +461,11 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
     scrollView.keyboardDismissMode = RCTUIKeyboardDismissModeFromProps(newScrollViewProps);
   }
 
+  if (oldScrollViewProps.maintainVisibleContentPosition.has_value() &&
+      !newScrollViewProps.maintainVisibleContentPosition.has_value()) {
+    [self _resetMaintainVisibleContentPositionState];
+  }
+
   [super updateProps:props oldProps:oldProps];
 }
 
@@ -706,9 +718,7 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
   self.frame = CGRectZero;
   self.frame = oldFrame;
   _contentView = nil;
-  _prevFirstVisibleFrame = CGRectZero;
-  _firstVisibleView = nil;
-  _firstVisibleViewTag = 0;
+  [self _resetMaintainVisibleContentPositionState];
   _virtualViewContainerState = nil;
 }
 
@@ -1056,37 +1066,70 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
 
 #pragma mark - Maintain visible content position
 
+- (void)_resetMaintainVisibleContentPositionState
+{
+  _prevFirstVisibleFrame = CGRectZero;
+  _firstVisibleView = nil;
+  _firstVisibleViewTag = 0;
+  _layoutOrderCache->invalidate();
+}
+
 - (void)_prepareForMaintainVisibleScrollPosition
 {
   const auto &props = static_cast<const ScrollViewProps &>(*_props);
-  if (!props.maintainVisibleContentPosition || _avoidAdjustmentForMaintainVisibleContentPosition) {
+  if (!props.maintainVisibleContentPosition) {
+    [self _resetMaintainVisibleContentPositionState];
+    return;
+  }
+  if (_avoidAdjustmentForMaintainVisibleContentPosition) {
+    return;
+  }
+
+  if (!_contentView) {
     return;
   }
 
   BOOL horizontal = _scrollView.contentSize.width > self.frame.size.width;
   int minIdx = props.maintainVisibleContentPosition.value().minIndexForVisible;
-  for (NSUInteger ii = minIdx; ii < _contentView.subviews.count; ++ii) {
-    // Find the first view that is partially or fully visible.
-    UIView *subview = _contentView.subviews[ii];
-    BOOL hasNewView = NO;
+  const NSUInteger subviewCount = _contentView.subviews.count;
+  if (subviewCount == 0 || static_cast<NSUInteger>(minIdx) >= subviewCount) {
+    return;
+  }
+
+  std::vector<RCTMVCPChildLayoutMetrics> children;
+  children.reserve(subviewCount);
+  for (NSUInteger i = 0; i < subviewCount; ++i) {
+    UIView *subview = _contentView.subviews[i];
     if (horizontal) {
-      hasNewView = subview.frame.origin.x + subview.frame.size.width > _scrollView.contentOffset.x;
+      children.push_back(
+          {i, subview.frame.origin.x, subview.frame.origin.x + subview.frame.size.width});
     } else {
-      hasNewView = subview.frame.origin.y + subview.frame.size.height > _scrollView.contentOffset.y;
-    }
-    if (hasNewView || ii == _contentView.subviews.count - 1) {
-      _prevFirstVisibleFrame = subview.frame;
-      _firstVisibleView = subview;
-      _firstVisibleViewTag = subview.tag;
-      break;
+      children.push_back(
+          {i, subview.frame.origin.y, subview.frame.origin.y + subview.frame.size.height});
     }
   }
+
+  CGFloat currentScroll = horizontal ? _scrollView.contentOffset.x : _scrollView.contentOffset.y;
+  RCTMVCPLayoutOrderCache *cache = minIdx > 0 ? _layoutOrderCache : nullptr;
+  auto anchorIndex = RCTMVCPFindFirstVisibleAnchorIndex(children, minIdx, currentScroll, cache);
+  if (!anchorIndex.has_value()) {
+    return;
+  }
+
+  UIView *subview = _contentView.subviews[anchorIndex.value()];
+  _prevFirstVisibleFrame = subview.frame;
+  _firstVisibleView = subview;
+  _firstVisibleViewTag = subview.tag;
 }
 
 - (void)_adjustForMaintainVisibleContentPosition
 {
   const auto &props = static_cast<const ScrollViewProps &>(*_props);
-  if (!props.maintainVisibleContentPosition || _avoidAdjustmentForMaintainVisibleContentPosition) {
+  if (!props.maintainVisibleContentPosition) {
+    [self _resetMaintainVisibleContentPositionState];
+    return;
+  }
+  if (_avoidAdjustmentForMaintainVisibleContentPosition) {
     return;
   }
 
@@ -1115,13 +1158,13 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
 
   std::optional<int> autoscrollThreshold = props.maintainVisibleContentPosition.value().autoscrollToTopThreshold;
   BOOL horizontal = _scrollView.contentSize.width > self.frame.size.width;
-  // TODO: detect and handle/ignore re-ordering
   if (horizontal) {
     CGFloat deltaX = _firstVisibleView.frame.origin.x - _prevFirstVisibleFrame.origin.x;
     if (ABS(deltaX) > 0.5) {
       CGFloat x = _scrollView.contentOffset.x;
       [self _forceDispatchNextScrollEvent];
       _scrollView.contentOffset = CGPointMake(_scrollView.contentOffset.x + deltaX, _scrollView.contentOffset.y);
+      _prevFirstVisibleFrame = _firstVisibleView.frame;
       if (autoscrollThreshold) {
         // If the offset WAS within the threshold of the start, animate to the start.
         if (x <= autoscrollThreshold.value()) {
@@ -1136,6 +1179,7 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
       CGFloat y = _scrollView.contentOffset.y;
       [self _forceDispatchNextScrollEvent];
       _scrollView.contentOffset = CGPointMake(_scrollView.contentOffset.x, _scrollView.contentOffset.y + deltaY);
+      _prevFirstVisibleFrame = newFrame;
       if (autoscrollThreshold) {
         // If the offset WAS within the threshold of the start, animate to the start.
         if (y <= autoscrollThreshold.value()) {

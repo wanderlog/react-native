@@ -42,6 +42,7 @@ internal class MaintainVisibleScrollPositionHelper<ScrollViewT>(
   private var firstVisibleViewRef: WeakReference<View>? = null
   private var prevFirstVisibleFrame: Rect? = null
   private var isListening = false
+  private val layoutOrderCache = LayoutOrderCache()
 
   private val contentView: ReactViewGroup?
     get() = scrollView?.getChildAt(0) as ReactViewGroup?
@@ -84,6 +85,7 @@ internal class MaintainVisibleScrollPositionHelper<ScrollViewT>(
     }
     isListening = false
     firstVisibleViewRef = null
+    layoutOrderCache.invalidate()
     uIManager.removeUIManagerEventListener(this)
   }
 
@@ -126,30 +128,32 @@ internal class MaintainVisibleScrollPositionHelper<ScrollViewT>(
     val contentView = contentView ?: return
 
     val currentScroll = if (horizontal) scrollView.scrollX else scrollView.scrollY
-    var firstVisibleView: View? = null
-    // We cannot assume that the views will be in position order because of things like z-index
-    // which will change the order of views in their parent. This means we need to iterate through
-    // the full children array and find the view with the smallest position that is bigger than
-    // the scroll position.
-    var firstVisibleViewPosition = Float.MAX_VALUE
-    for (i in config.minIndexForVisible until contentView.childCount) {
-      val child = contentView.getChildAt(i)
-
-      // Compute the position of the end of the child
-      val position = if (horizontal) child.x + child.width else child.y + child.height
-
-      // If the child is partially visible or this is the last child, select it as the anchor.
-      if ((position > currentScroll && position < firstVisibleViewPosition) ||
-          (firstVisibleView == null && i == contentView.childCount - 1)) {
-        firstVisibleView = child
-        firstVisibleViewPosition = position
-      }
-    }
-
-    if (firstVisibleView == null) {
+    val childCount = contentView.childCount
+    if (childCount == 0) {
       return
     }
 
+    val children =
+        (0 until childCount).map { i ->
+          val child = contentView.getChildAt(i)
+          ChildLayoutMetrics(
+              index = i,
+              start = if (horizontal) child.x else child.y,
+              end =
+                  if (horizontal) child.x + child.width else child.y + child.height,
+          )
+        }
+
+    val cache = if (config.minIndexForVisible > 0) layoutOrderCache else null
+    val anchorIndex =
+        findAnchorIndex(
+            children,
+            config.minIndexForVisible,
+            currentScroll.toFloat(),
+            cache,
+        ) ?: return
+
+    val firstVisibleView = contentView.getChildAt(anchorIndex)
     firstVisibleViewRef = WeakReference(firstVisibleView)
     val frame = Rect()
     firstVisibleView.getHitRect(frame)
@@ -175,5 +179,68 @@ internal class MaintainVisibleScrollPositionHelper<ScrollViewT>(
 
   override fun didScheduleMountItems(uiManager: UIManager) {
     // noop
+  }
+}
+
+internal data class ChildLayoutMetrics(val index: Int, val start: Float, val end: Float)
+
+internal fun findAnchorIndex(
+    children: List<ChildLayoutMetrics>,
+    minIndexForVisible: Int,
+    currentScroll: Float,
+    layoutOrderCache: LayoutOrderCache?,
+): Int? {
+  if (children.isEmpty() || minIndexForVisible >= children.size) {
+    return null
+  }
+
+  if (minIndexForVisible == 0) {
+    // z-index can reorder children in the ViewGroup. Scan all children and pick the
+    // topmost visible anchor by layout position.
+    var anchorIndex: Int? = null
+    var firstVisibleEnd = Float.MAX_VALUE
+    for (i in children.indices) {
+      val child = children[i]
+      if ((child.end > currentScroll && child.end < firstVisibleEnd) ||
+          (anchorIndex == null && i == children.lastIndex)) {
+        anchorIndex = child.index
+        firstVisibleEnd = child.end
+      }
+    }
+    return anchorIndex
+  }
+
+  val sortedIndices = layoutOrderCache?.sortedIndices(children) ?: return null
+
+  // minIndexForVisible applies in layout order rather than hierarchy order.
+  for (i in minIndexForVisible until sortedIndices.size) {
+    val child = children[sortedIndices[i]]
+    if (child.end > currentScroll || i == sortedIndices.lastIndex) {
+      return child.index
+    }
+  }
+  return null
+}
+
+internal class LayoutOrderCache {
+  private var lastSnapshot: List<Pair<Float, Float>>? = null
+  private var sortedIndices: IntArray? = null
+
+  fun sortedIndices(children: List<ChildLayoutMetrics>): IntArray {
+    val snapshot = children.map { it.start to it.end }
+    val cachedIndices = sortedIndices
+    if (snapshot == lastSnapshot && cachedIndices != null) {
+      return cachedIndices
+    }
+
+    val indices = children.indices.sortedBy { children[it].start }.toIntArray()
+    lastSnapshot = snapshot
+    sortedIndices = indices
+    return indices
+  }
+
+  fun invalidate() {
+    lastSnapshot = null
+    sortedIndices = null
   }
 }
