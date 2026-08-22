@@ -1,9 +1,0 @@
-struct test::State {
-  public test::State::Mode mode;
-}
-
-enum test::State::Mode {
-  Auto,
-  Disabled,
-  Manual,
-}

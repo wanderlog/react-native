@@ -1,6 +1,0 @@
-#!/usr/bin/env dotslash
-
-{
-    "name": "React Native DevTools",
-    "platforms": {}
-}
