@@ -1,3 +1,0 @@
-interface RCTRealInterface {
-  public virtual void realMethod();
-}

@@ -1,4 +1,0 @@
-interface RCTTestInterface {
-  public virtual NSArray* interfaceDeprecatedMethod:(id param);
-  public virtual void normalMethod:(NSString* name);
-}

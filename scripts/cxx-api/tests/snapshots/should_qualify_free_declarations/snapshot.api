@@ -1,6 +1,0 @@
-typedef void(*test::FreeFnPtr)(test::Param);
-using test::FreeCallback = void(test::Param);
-void test::freeFunction(test::Param p);
-
-struct test::Param {
-}

@@ -1,6 +1,0 @@
-struct test::Container {
-  public typedef void(*FnPtr)(test::Param, int);
-}
-
-struct test::Param {
-}

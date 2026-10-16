@@ -1,6 +1,0 @@
-category RCTBridgeProxy(Cxx) {
-  public @property (assign) int cxxOnlyProperty;
-}
-
-interface RCTBridgeProxy : public NSObject {
-}
