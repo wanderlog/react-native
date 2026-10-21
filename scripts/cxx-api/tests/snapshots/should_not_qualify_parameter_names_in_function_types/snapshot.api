@@ -1,5 +1,0 @@
-class test::Tracer {
-  public bool isActive;
-  public uint32_t subscribe(test::Tracer::StateCallback callback);
-  public using StateCallback = void(*)(bool isActive);
-}

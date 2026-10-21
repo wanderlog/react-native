@@ -1,3 +1,0 @@
-class test::Clss {
-  public using MyInt32 = int32_t;
-}

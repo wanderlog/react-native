@@ -1,5 +1,0 @@
-category RCTConvert(EmptyCategory) {
-}
-
-interface RCTConvert : public NSObject {
-}

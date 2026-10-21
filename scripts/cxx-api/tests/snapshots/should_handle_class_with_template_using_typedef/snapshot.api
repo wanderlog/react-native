@@ -1,4 +1,0 @@
-class test::Clss {
-  template <typedef T>
-  public using MyT = T;
-}

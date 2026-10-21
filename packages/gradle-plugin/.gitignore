@@ -1,6 +1,0 @@
-build/
-react-native-gradle-plugin/build/
-settings-plugin/build/
-shared/build/
-shared-testutil/build/
-.kotlin/

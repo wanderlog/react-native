@@ -1,5 +1,0 @@
-class test::Base {
-  public bool disabled;
-  public bool selected;
-  public int count;
-}
