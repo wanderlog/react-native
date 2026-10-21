@@ -543,11 +543,17 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
 void YogaLayoutableShadowNode::setSize(Size size) const {
   ensureUnsealed();
 
+  auto width = yoga::StyleSizeLength::points(size.width);
+  auto height = yoga::StyleSizeLength::points(size.height);
+
   auto style = yogaNode_.style();
-  style.setDimension(
-      yoga::Dimension::Width, yoga::StyleSizeLength::points(size.width));
-  style.setDimension(
-      yoga::Dimension::Height, yoga::StyleSizeLength::points(size.height));
+  if (style.dimension(yoga::Dimension::Width) == width &&
+      style.dimension(yoga::Dimension::Height) == height) {
+    return;
+  }
+
+  style.setDimension(yoga::Dimension::Width, width);
+  style.setDimension(yoga::Dimension::Height, height);
   yogaNode_.setStyle(style);
   yogaNode_.setDirty(true);
 }
@@ -582,6 +588,10 @@ void YogaLayoutableShadowNode::setPositionType(
   ensureUnsealed();
 
   auto style = yogaNode_.style();
+  if (style.positionType() == yoga::scopedEnum(positionType)) {
+    return;
+  }
+
   style.setPositionType(yoga::scopedEnum(positionType));
   yogaNode_.setStyle(style);
   yogaNode_.setDirty(true);
