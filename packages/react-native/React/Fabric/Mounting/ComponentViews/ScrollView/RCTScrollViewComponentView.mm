@@ -1090,6 +1090,24 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
     CGFloat position = horizontal ? subview.frame.origin.x + subview.frame.size.width
                                   : subview.frame.origin.y + subview.frame.size.height;
 
+    // If we encounter a zero-sized view as the first subview, assume it's the anchor without
+    // checking anything else.
+    //
+    // This is the easiest way to accommodate LegendList without introducing new APIs. LegendList
+    // renders a zero-sized, absolutely positioned `ScrollAdjust` view as the first child of the
+    // scroll content. It sits at a large biased offset and moves by the amount the list wants
+    // the scroll position adjusted. Because its end position is past every other child, the
+    // smallest-end scan below would otherwise pick a stationary sibling and skip the adjustment.
+    // See:
+    // https://github.com/react/react-native/pull/57959#issuecomment-6341492122
+    // https://github.com/LegendApp/legend-list/blob/v3.7.0/src/components/ScrollAdjust.native.tsx#L15-L24
+    // https://github.com/LegendApp/legend-list/blob/v3.7.0/src/components/ListComponent.tsx#L246-L257
+    if (index == (NSUInteger)minIndex && CGSizeEqualToSize(subview.frame.size, CGSizeZero) &&
+        position > currentScroll) {
+      firstVisibleView = subview;
+      break;
+    }
+
     // If the child is partially visible or this is the last child, select it as the anchor.
     if ((position > currentScroll && position < firstVisibleViewPosition) ||
         (firstVisibleView == nil && index == subviews.count - 1)) {

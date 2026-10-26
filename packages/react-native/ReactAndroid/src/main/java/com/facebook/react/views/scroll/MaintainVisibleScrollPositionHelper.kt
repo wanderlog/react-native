@@ -135,7 +135,8 @@ internal class MaintainVisibleScrollPositionHelper<ScrollViewT>(
           // If minIndexForVisible is set though, we have to exclude the first `minIndexForVisible`
           // items, which requires sorting to do.
           children.sortedWith(
-              compareBy<View>({ if (horizontal) it.x else it.y }, { contentView.indexOfChild(it) }))
+              compareBy<View>({ if (horizontal) it.x else it.y }, { contentView.indexOfChild(it) })
+          )
         } else {
           children
         }
@@ -157,9 +158,33 @@ internal class MaintainVisibleScrollPositionHelper<ScrollViewT>(
       // Compute the position of the end of the child
       val position = if (horizontal) child.x + child.width else child.y + child.height
 
+      // If we encounter a zero-sized view as the first subview, assume it's the anchor without
+      // checking anything else.
+      //
+      // This is the easiest way to accommodate LegendList without introducing new APIs. LegendList
+      // renders a zero-sized, absolutely positioned `ScrollAdjust` view as the first child of the
+      // scroll content. It sits at a large biased offset and moves by the amount the list wants
+      // the scroll position adjusted. Because its end position is past every other child, the
+      // smallest-end scan below would otherwise pick a stationary sibling and skip the adjustment.
+      // See:
+      // https://github.com/react/react-native/pull/57959#issuecomment-6341492122
+      // https://github.com/LegendApp/legend-list/blob/v3.7.0/src/components/ScrollAdjust.native.tsx#L15-L24
+      // https://github.com/LegendApp/legend-list/blob/v3.7.0/src/components/ListComponent.tsx#L246-L257
+      if (
+          i == config.minIndexForVisible &&
+              child.width == 0 &&
+              child.height == 0 &&
+              position > currentScroll
+      ) {
+        firstVisibleView = child
+        break
+      }
+
       // If the child is partially visible or this is the last child, select it as the anchor.
-      if ((position > currentScroll && position < firstVisibleViewPosition) ||
-          (firstVisibleView == null && i == subviews.size - 1)) {
+      if (
+          (position > currentScroll && position < firstVisibleViewPosition) ||
+              (firstVisibleView == null && i == subviews.size - 1)
+      ) {
         firstVisibleView = child
         firstVisibleViewPosition = position
       }
