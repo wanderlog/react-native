@@ -1,3 +1,12 @@
+# Wanderlog fork
+
+This is Wanderlog's fork of React Native. Our changes live on the
+`0.86.3-wanderlog` branch. See the README there for how to release a new version
+and publish it to npm as
+[`@wanderlogapp/react-native`](https://www.npmjs.com/package/@wanderlogapp/react-native).
+
+--------------------------------------------------------------------------------
+
 <h1 align="center">
   <a href="https://reactnative.dev/">
     React Native
