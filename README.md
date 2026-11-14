@@ -2,6 +2,37 @@
 
 This is Wanderlog's fork of React Native. See [**Patching React Native**](https://app.notion.com/p/wanderlog/Patching-React-Native-17b4797ed24d481eb2155c9daec1ba98) in Notion for how to patch, backport, publish and upgrade it.
 
+## Publishing to npm
+
+We publish this fork as
+[`@wanderlogapp/react-native`](https://www.npmjs.com/package/@wanderlogapp/react-native).
+After you release a new version using the Notion doc above, make sure
+`npm whoami` prints `wanderlogapp` (if not, run `npm login`), then run:
+
+```shell
+VERSION='<the version you just released>' # e.g., VERSION='v0.86.3-wanderlog.3'
+
+# Make sure 0.86.3-wanderlog-built has the latest release locally
+git fetch --tags
+git checkout 0.86.3-wanderlog-built
+git reset --hard "$VERSION"
+
+# Rename the package for npm, and set its version (without the leading v)
+npm pkg set name='@wanderlogapp/react-native' version="${VERSION#v}"
+
+# Commit and push the rename, so 0.86.3-wanderlog-built matches what's on npm
+git commit -am "[$VERSION] Publish to npm as @wanderlogapp/react-native"
+git push -f origin 0.86.3-wanderlog-built
+
+# Publish to npm. --ignore-scripts skips the package's build and install
+# scripts, since the built files are already committed
+npm publish --access public --ignore-scripts
+```
+
+Then, in itineraries, bump the version in the `npm:@wanderlogapp/react-native@…`
+alias and run `yarn install`. New `@wanderlogapp/*` versions skip the
+one-week age gate because of `npmPreapprovedPackages` in `.yarnrc.yml`.
+
 --------
 
 <h1 align="center">
