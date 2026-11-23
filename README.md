@@ -1,3 +1,9 @@
+# Wanderlog-specific header
+
+This is Wanderlog's fork of React Native, published to npm as [`@wanderlogapp/react-native`](https://www.npmjs.com/package/@wanderlogapp/react-native). See [**Patching React Native**](https://app.notion.com/p/wanderlog/Patching-React-Native-17b4797ed24d481eb2155c9daec1ba98) in Notion for how to patch, backport, release and upgrade it.
+
+--------
+
 <h1 align="center">
   <a href="https://reactnative.dev/">
     React Native
