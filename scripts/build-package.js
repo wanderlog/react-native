@@ -27,7 +27,7 @@ const {cp, exec} = require('shelljs');
  * - @react-native/codegen yarn build (not part of monorepo yarn build)
  * - yarn build-types
  * - react-native prepack (codegen + README)
- * - copy hermesc binaries into sdks/hermesc for GitHub installs
+ * - copy hermesc binaries into sdks/hermesc, which the npm package includes
  *
  * If this script fails, we can debug it by running it with `CI=true` to see
  * all the intermediate commands the Shell scripts run, since the scripts
