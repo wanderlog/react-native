@@ -14,7 +14,6 @@ import type {RootTag} from '../Types/RootTagTypes';
 import type {UIManagerJSInterface} from '../Types/UIManagerJSInterface';
 
 import {unstable_hasComponent} from '../NativeComponent/NativeComponentRegistryUnstable';
-import defineLazyObjectProperty from '../Utilities/defineLazyObjectProperty';
 import Platform from '../Utilities/Platform';
 import {getFabricUIManager} from './FabricUIManager';
 import nullthrows from 'nullthrows';
@@ -266,6 +265,15 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
   ...UIManagerJSPlatformAPIs,
   ...UIManagerJSUnusedInNewArchAPIs,
   getViewManagerConfig: (viewManagerName: string): unknown => {
+    // We try to use getConstantsForViewManager because getUIManagerConstants
+    // below is much slower, since it builds the config for every view manager.
+    if (getConstantsForViewManager) {
+      if (!(viewManagerName in viewManagerConfigCache)) {
+        viewManagerConfigCache[viewManagerName] =
+          getConstantsForViewManager(viewManagerName);
+      }
+      return viewManagerConfigCache[viewManagerName];
+    }
     if (getUIManagerConstants) {
       const constants = getUIManagerConstantsCached();
       if (
@@ -396,19 +404,6 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
   },
 };
 
-if (getUIManagerConstants) {
-  Object.keys(getUIManagerConstantsCached()).forEach(viewConfigName => {
-    UIManagerJS[viewConfigName] = getUIManagerConstantsCached()[viewConfigName];
-  });
-
-  if (UIManagerJS.getConstants().ViewManagerNames) {
-    UIManagerJS.getConstants().ViewManagerNames.forEach(viewManagerName => {
-      defineLazyObjectProperty(UIManagerJS, viewManagerName, {
-        get: () =>
-          nullthrows(UIManagerJS.getConstantsForViewManager)(viewManagerName),
-      });
-    });
-  }
-}
+const viewManagerConfigCache: {[viewManagerName: string]: ?Object} = {};
 
 export default UIManagerJS;
