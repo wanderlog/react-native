@@ -105,7 +105,7 @@ describe.each(['ios', 'android'])('Bridgeless UIManager on %s', platform => {
     expect(getConstants).not.toHaveBeenCalled();
   });
 
-  it('does not fall back to the full constants without the per-manager binding', () => {
+  it('returns null and skips getConstants() when the per-manager binding is missing', () => {
     setGlobal('RN$LegacyInterop_UIManager_getConstantsForViewManager', null);
     const consoleError = jest
       .spyOn(console, 'error')
