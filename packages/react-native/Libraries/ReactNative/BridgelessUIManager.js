@@ -43,12 +43,8 @@ const getUIManagerConstantsCached = (function () {
 const getConstantsForViewManager: ?(viewManagerName: string) => ?Object =
   global.RN$LegacyInterop_UIManager_getConstantsForViewManager;
 
-// Unknown names are cached as null too, because a miss is
-// slow on Android: every on-demand package tries to create the view manager.
-// That's safe, since the view managers are fixed when the instance is created.
-// Unlike upstream, the configs aren't also copied onto UIManager as properties
-// (UIManager.RCTView), because that builds every config at import. Use
-// getViewManagerConfig instead.
+// Unknown names are cached as null too, because a miss is slow on Android:
+// every on-demand package tries to create the view manager.
 const viewManagerConfigCache: Map<string, ?Object> = new Map();
 
 function getConstantsForViewManagerCached(viewManagerName: string): ?Object {
@@ -275,11 +271,6 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
   ...UIManagerJSPlatformAPIs,
   ...UIManagerJSUnusedInNewArchAPIs,
   getViewManagerConfig: (viewManagerName: string): unknown => {
-    // There's no fallback to getUIManagerConstants, which builds every view
-    // manager's config. iOS and Android install getConstantsForViewManager
-    // whenever they install getConstants (both when
-    // useNativeViewConfigsInBridgelessMode is on), so the else branch only
-    // runs when that flag is off.
     if (getConstantsForViewManager) {
       return getConstantsForViewManagerCached(viewManagerName);
     } else {
@@ -301,8 +292,6 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
       return null;
     }
   },
-  // On both platforms (unlike upstream, which only has it on Android), so
-  // getNativeComponentAttributes can skip getConstants() on iOS too
   getDefaultEventTypes: (): Object => {
     if (getDefaultEventTypes) {
       return getDefaultEventTypesCached();

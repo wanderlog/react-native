@@ -111,8 +111,7 @@ function getNativeComponentAttributes(uiViewClassName: string): any {
 
 function attachDefaultEventTypes(viewConfig: any) {
   // Prefer getDefaultEventTypes, because getConstants() builds every view
-  // manager's config. The binding is installed in bridgeless mode whenever
-  // getViewManagerConfig works, so only bridge mode gets past this.
+  // manager's config. Only bridge mode gets past this.
   if (global.RN$LegacyInterop_UIManager_getDefaultEventTypes != null) {
     merge(viewConfig, nullthrows(UIManager.getDefaultEventTypes)());
     return;

@@ -17,10 +17,7 @@
 namespace facebook::react {
 namespace {
 
-// Maps each view manager's JS name (e.g. "RCTView") to its class. Cached so
-// each getConstantsForViewManager call is a lookup instead of a scan of every
-// module class. Modules register in +load, before JS runs, so the map can't
-// go stale.
+// Cached, since modules register in +load, before JS runs
 NSDictionary<NSString *, Class> *getViewManagerClassesByName()
 {
   static NSDictionary<NSString *, Class> *viewManagerClassesByName;
@@ -37,9 +34,6 @@ NSDictionary<NSString *, Class> *getViewManagerClassesByName()
   return viewManagerClassesByName;
 }
 
-// Builds one view manager's config. directEvents and bubblingEvents are shared
-// across calls to dedupe event entries and to report, in debug builds, an event
-// registered as direct by one view manager and bubbling by another.
 NSMutableDictionary<NSString *, id> *viewConfigForViewManagerClass(
     Class moduleClass,
     NSString *name,
@@ -62,9 +56,6 @@ jsi::Value getConstants(facebook::jsi::Runtime &runtime)
   return TurboModuleConvertUtils::convertObjCObjectToJSIValue(runtime, result);
 };
 
-// One view manager's entry from getConstants(), or null if there's no view
-// manager with that name. The fresh event dictionaries give the same config,
-// but skip the cross-view-manager debug check; getConstants() still runs it.
 jsi::Value getConstantsForViewManager(facebook::jsi::Runtime &runtime, const std::string &viewManagerName)
 {
   NSString *name = [NSString stringWithUTF8String:viewManagerName.c_str()];
@@ -76,8 +67,8 @@ jsi::Value getConstantsForViewManager(facebook::jsi::Runtime &runtime, const std
       runtime, viewConfigForViewManagerClass(moduleClass, name, [NSMutableDictionary new], [NSMutableDictionary new]));
 }
 
-// Empty: unlike Android, iOS UIManager constants have no generic event types.
-// Events every view supports, like touches, are in BaseViewConfig.ios.js.
+// Empty, since iOS has no generic event types, unlike Android. Events every
+// view supports, like touches, are in BaseViewConfig.ios.js.
 jsi::Value getDefaultEventTypes(facebook::jsi::Runtime &runtime)
 {
   return jsi::Object(runtime);
