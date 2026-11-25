@@ -44,9 +44,7 @@ describe('Bridgeless UIManager', () => {
       originalGlobals[name] = global[name];
     }
     getConstants = jest.fn(() => fullConstants);
-    getConstantsForViewManager = jest.fn((viewManagerName: string) =>
-      viewManagerName === 'RCTTestView' ? viewManagerConfig : null,
-    );
+    getConstantsForViewManager = jest.fn(() => viewManagerConfig);
     setGlobal('RN$Bridgeless', true);
     setGlobal('RN$LegacyInterop_UIManager_getConstants', getConstants);
     setGlobal(
@@ -91,6 +89,7 @@ describe('Bridgeless UIManager', () => {
     expect(getConstantsForViewManager).toHaveBeenCalledWith('RCTTestView');
 
     // Unknown names are cached too
+    getConstantsForViewManager.mockReturnValueOnce(null);
     expect(UIManager.getViewManagerConfig('NotAViewManager')).toBeNull();
     expect(UIManager.getViewManagerConfig('NotAViewManager')).toBeNull();
     expect(getConstantsForViewManager).toHaveBeenCalledTimes(2);

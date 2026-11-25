@@ -265,10 +265,10 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
   ...UIManagerJSPlatformAPIs,
   ...UIManagerJSUnusedInNewArchAPIs,
   getViewManagerConfig: (viewManagerName: string): unknown => {
-    // Use getConstantsForViewManager instead of getConstants(), which is much
-    // slower because it builds the config for every view manager. Both
+    // We use getConstantsForViewManager because getUIManagerConstants is much
+    // slower, since it builds the config for every view manager. Both
     // platforms install the two bindings together, so we never need
-    // getConstants() here.
+    // getUIManagerConstants here.
     if (getConstantsForViewManager) {
       if (!(viewManagerName in viewManagerConfigCache)) {
         viewManagerConfigCache[viewManagerName] =

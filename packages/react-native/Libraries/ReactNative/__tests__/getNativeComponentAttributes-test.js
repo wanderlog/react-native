@@ -54,14 +54,31 @@ describe('getNativeComponentAttributes', () => {
     const attributes = getNativeComponentAttributes('RCTTestView');
 
     expect(getDefaultEventTypes).toHaveBeenCalledTimes(1);
-    expect(Object.keys(attributes.bubblingEventTypes).sort()).toEqual([
-      'topDefaultBubble',
-      'topOwnBubble',
-    ]);
-    expect(Object.keys(attributes.directEventTypes).sort()).toEqual([
-      'topDefaultDirect',
-      'topOwnDirect',
-    ]);
+    expect(attributes).toMatchObject({
+      bubblingEventTypes: {
+        topDefaultBubble: {phasedRegistrationNames: {}},
+        topOwnBubble: {phasedRegistrationNames: {}},
+      },
+      directEventTypes: {
+        topDefaultDirect: {registrationName: 'onDefault'},
+        topOwnDirect: {registrationName: 'onOwnDirect'},
+      },
+    });
+  });
+
+  it('calls the default event types binding once across components', () => {
+    const getDefaultEventTypes = jest.fn(() => ({}));
+    // $FlowExpectedError[cannot-write]
+    global.RN$LegacyInterop_UIManager_getDefaultEventTypes =
+      getDefaultEventTypes;
+    jest.resetModules();
+
+    const getNativeComponentAttributes =
+      require('../getNativeComponentAttributes').default;
+    getNativeComponentAttributes('RCTTestView');
+    getNativeComponentAttributes('RCTOtherTestView');
+
+    expect(getDefaultEventTypes).toHaveBeenCalledTimes(1);
   });
 
   it('handles an empty result, as on iOS', () => {
@@ -75,6 +92,8 @@ describe('getNativeComponentAttributes', () => {
       require('../getNativeComponentAttributes').default;
     const attributes = getNativeComponentAttributes('RCTTestView');
 
-    expect(Object.keys(attributes.directEventTypes)).toEqual(['topOwnDirect']);
+    expect(attributes.directEventTypes).toEqual({
+      topOwnDirect: {registrationName: 'onOwnDirect'},
+    });
   });
 });
