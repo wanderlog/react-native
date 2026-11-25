@@ -16,59 +16,105 @@ jest.mock('../../Utilities/Platform', () => ({
 }));
 jest.unmock('../UIManager');
 
-describe('UIManager', () => {
-  it('preserves lazy ViewManager getters when composing the Bridgeless implementation', () => {
-    const originalBridgelessValue = global.RN$Bridgeless;
-    const originalGetConstants = global.RN$LegacyInterop_UIManager_getConstants;
-    const originalGetConstantsForViewManager =
-      global.RN$LegacyInterop_UIManager_getConstantsForViewManager;
-    const originalGetDefaultEventTypes =
-      global.RN$LegacyInterop_UIManager_getDefaultEventTypes;
-    const viewManagerConfig = {Commands: {focus: 1}};
-    const getConstants = jest.fn(() => ({
-      LazyViewManagersEnabled: true,
-      ViewManagerNames: ['RCTTestView'],
-    }));
-    const getConstantsForViewManager = jest.fn(() => viewManagerConfig);
+const GLOBAL_NAMES = [
+  'RN$Bridgeless',
+  'RN$LegacyInterop_UIManager_getConstants',
+  'RN$LegacyInterop_UIManager_getConstantsForViewManager',
+  'RN$LegacyInterop_UIManager_getDefaultEventTypes',
+];
 
-    jest.resetModules();
-    try {
-      // $FlowExpectedError[cannot-write]
-      global.RN$Bridgeless = true;
-      // $FlowExpectedError[cannot-write]
-      global.RN$LegacyInterop_UIManager_getConstants = getConstants;
-      // $FlowExpectedError[cannot-write]
-      global.RN$LegacyInterop_UIManager_getConstantsForViewManager =
-        getConstantsForViewManager;
-      // $FlowExpectedError[cannot-write]
-      global.RN$LegacyInterop_UIManager_getDefaultEventTypes = jest.fn(
-        () => ({}),
-      );
+function setGlobal(name: string, value: unknown) {
+  // $FlowExpectedError[prop-missing]
+  global[name] = value;
+}
 
-      const UIManager = require('../UIManager').default;
+describe('Bridgeless UIManager', () => {
+  const originalGlobals: {[string]: unknown} = {};
+  const fullConstants = {
+    LazyViewManagersEnabled: true,
+    ViewManagerNames: ['RCTTestView'],
+  };
+  const viewManagerConfig = {Commands: {focus: 1}};
+  let getConstants = jest.fn();
+  let getConstantsForViewManager = jest.fn();
 
-      expect(getConstants).toHaveBeenCalledTimes(1);
-      expect(getConstantsForViewManager).not.toHaveBeenCalled();
-      expect(
-        Object.getOwnPropertyDescriptor(UIManager, 'RCTTestView'),
-      ).toBeDefined();
-      expect(Object.keys(UIManager)).toContain('RCTTestView');
-
-      expect(Reflect.get(UIManager, 'RCTTestView')).toBe(viewManagerConfig);
-      expect(Reflect.get(UIManager, 'RCTTestView')).toBe(viewManagerConfig);
-      expect(getConstantsForViewManager).toHaveBeenCalledTimes(1);
-    } finally {
-      // $FlowExpectedError[cannot-write]
-      global.RN$Bridgeless = originalBridgelessValue;
-      // $FlowExpectedError[cannot-write]
-      global.RN$LegacyInterop_UIManager_getConstants = originalGetConstants;
-      // $FlowExpectedError[cannot-write]
-      global.RN$LegacyInterop_UIManager_getConstantsForViewManager =
-        originalGetConstantsForViewManager;
-      // $FlowExpectedError[cannot-write]
-      global.RN$LegacyInterop_UIManager_getDefaultEventTypes =
-        originalGetDefaultEventTypes;
-      jest.resetModules();
+  beforeEach(() => {
+    for (const name of GLOBAL_NAMES) {
+      // $FlowExpectedError[prop-missing]
+      originalGlobals[name] = global[name];
     }
+    getConstants = jest.fn(() => fullConstants);
+    getConstantsForViewManager = jest.fn((viewManagerName: string) =>
+      viewManagerName === 'RCTTestView' ? viewManagerConfig : null,
+    );
+    setGlobal('RN$Bridgeless', true);
+    setGlobal('RN$LegacyInterop_UIManager_getConstants', getConstants);
+    setGlobal(
+      'RN$LegacyInterop_UIManager_getConstantsForViewManager',
+      getConstantsForViewManager,
+    );
+    setGlobal(
+      'RN$LegacyInterop_UIManager_getDefaultEventTypes',
+      jest.fn(() => ({})),
+    );
+    jest.resetModules();
+  });
+
+  afterEach(() => {
+    for (const name of GLOBAL_NAMES) {
+      setGlobal(name, originalGlobals[name]);
+    }
+    jest.restoreAllMocks();
+    jest.resetModules();
+  });
+
+  it('does not build any view configs when imported', () => {
+    const UIManager = require('../UIManager').default;
+
+    expect(getConstants).not.toHaveBeenCalled();
+    expect(getConstantsForViewManager).not.toHaveBeenCalled();
+    expect(
+      Object.getOwnPropertyDescriptor(UIManager, 'RCTTestView'),
+    ).toBeUndefined();
+  });
+
+  it('fetches and caches one view manager config at a time', () => {
+    const UIManager = require('../UIManager').default;
+
+    expect(UIManager.getViewManagerConfig('RCTTestView')).toBe(
+      viewManagerConfig,
+    );
+    expect(UIManager.getViewManagerConfig('RCTTestView')).toBe(
+      viewManagerConfig,
+    );
+    expect(getConstantsForViewManager).toHaveBeenCalledTimes(1);
+    expect(getConstantsForViewManager).toHaveBeenCalledWith('RCTTestView');
+
+    // Unknown names are cached too
+    expect(UIManager.getViewManagerConfig('NotAViewManager')).toBeNull();
+    expect(UIManager.getViewManagerConfig('NotAViewManager')).toBeNull();
+    expect(getConstantsForViewManager).toHaveBeenCalledTimes(2);
+
+    expect(getConstants).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to the full constants without the per-manager binding', () => {
+    setGlobal('RN$LegacyInterop_UIManager_getConstantsForViewManager', null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const UIManager = require('../UIManager').default;
+
+    expect(UIManager.getViewManagerConfig('RCTTestView')).toBeNull();
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(getConstants).not.toHaveBeenCalled();
+  });
+
+  it('still returns the full constants from getConstants()', () => {
+    const UIManager = require('../UIManager').default;
+
+    expect(UIManager.getConstants()).toBe(fullConstants);
+    expect(UIManager.getConstants()).toBe(fullConstants);
+    expect(getConstants).toHaveBeenCalledTimes(1);
   });
 });
