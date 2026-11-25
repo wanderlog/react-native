@@ -14,7 +14,6 @@ import type {RootTag} from '../Types/RootTagTypes';
 import type {UIManagerJSInterface} from '../Types/UIManagerJSInterface';
 
 import {unstable_hasComponent} from '../NativeComponent/NativeComponentRegistryUnstable';
-import defineLazyObjectProperty from '../Utilities/defineLazyObjectProperty';
 import Platform from '../Utilities/Platform';
 import {getFabricUIManager} from './FabricUIManager';
 import nullthrows from 'nullthrows';
@@ -43,6 +42,20 @@ const getUIManagerConstantsCached = (function () {
 
 const getConstantsForViewManager: ?(viewManagerName: string) => ?Object =
   global.RN$LegacyInterop_UIManager_getConstantsForViewManager;
+
+// Unknown names are cached as null too, because a miss is slow on Android:
+// every on-demand package tries to create the view manager.
+const viewManagerConfigCache: Map<string, ?Object> = new Map();
+
+function getConstantsForViewManagerCached(viewManagerName: string): ?Object {
+  if (!viewManagerConfigCache.has(viewManagerName)) {
+    viewManagerConfigCache.set(
+      viewManagerName,
+      nullthrows(getConstantsForViewManager)(viewManagerName),
+    );
+  }
+  return viewManagerConfigCache.get(viewManagerName);
+}
 
 const getDefaultEventTypes: ?() => Object =
   global.RN$LegacyInterop_UIManager_getDefaultEventTypes;
@@ -167,19 +180,11 @@ const UIManagerJSPlatformAPIs = Platform.select({
   android: {
     getConstantsForViewManager: (viewManagerName: string): ?Object => {
       if (getConstantsForViewManager) {
-        return getConstantsForViewManager(viewManagerName);
+        return getConstantsForViewManagerCached(viewManagerName);
       }
 
       raiseSoftError('getConstantsForViewManager');
       return {};
-    },
-    getDefaultEventTypes: (): Array<string> => {
-      if (getDefaultEventTypes) {
-        return getDefaultEventTypesCached();
-      }
-
-      raiseSoftError('getDefaultEventTypes');
-      return [];
     },
     setLayoutAnimationEnabledExperimental: (enabled: boolean): void => {
       if (__DEV__) {
@@ -266,16 +271,8 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
   ...UIManagerJSPlatformAPIs,
   ...UIManagerJSUnusedInNewArchAPIs,
   getViewManagerConfig: (viewManagerName: string): unknown => {
-    if (getUIManagerConstants) {
-      const constants = getUIManagerConstantsCached();
-      if (
-        !constants[viewManagerName] &&
-        UIManagerJS.getConstantsForViewManager
-      ) {
-        constants[viewManagerName] =
-          UIManagerJS.getConstantsForViewManager(viewManagerName);
-      }
-      return constants[viewManagerName];
+    if (getConstantsForViewManager) {
+      return getConstantsForViewManagerCached(viewManagerName);
     } else {
       raiseSoftError(
         `getViewManagerConfig('${viewManagerName}')`,
@@ -294,6 +291,14 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
       raiseSoftError('getConstants');
       return null;
     }
+  },
+  getDefaultEventTypes: (): Object => {
+    if (getDefaultEventTypes) {
+      return getDefaultEventTypesCached();
+    }
+
+    raiseSoftError('getDefaultEventTypes');
+    return {};
   },
   findSubviewIn: (
     reactTag: number,
@@ -395,20 +400,5 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
     );
   },
 };
-
-if (getUIManagerConstants) {
-  Object.keys(getUIManagerConstantsCached()).forEach(viewConfigName => {
-    UIManagerJS[viewConfigName] = getUIManagerConstantsCached()[viewConfigName];
-  });
-
-  if (UIManagerJS.getConstants().ViewManagerNames) {
-    UIManagerJS.getConstants().ViewManagerNames.forEach(viewManagerName => {
-      defineLazyObjectProperty(UIManagerJS, viewManagerName, {
-        get: () =>
-          nullthrows(UIManagerJS.getConstantsForViewManager)(viewManagerName),
-      });
-    });
-  }
-}
 
 export default UIManagerJS;

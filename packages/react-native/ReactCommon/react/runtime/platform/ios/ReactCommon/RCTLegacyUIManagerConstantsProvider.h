@@ -13,7 +13,9 @@ namespace facebook::react {
 /*
  * Installs UIManger constants provider into JavaScript runtime. This is needed
  * to implement UIManager.getConstants in bridgeless mode. The constants object
- * contains view configs for every legacy native component.
+ * contains view configs for every legacy native component. Also installs
+ * getConstantsForViewManager, which builds one view config, and
+ * getDefaultEventTypes.
  */
 void installLegacyUIManagerConstantsProviderBinding(jsi::Runtime &runtime);
 } // namespace facebook::react

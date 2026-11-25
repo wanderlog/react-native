@@ -110,6 +110,12 @@ function getNativeComponentAttributes(uiViewClassName: string): any {
 }
 
 function attachDefaultEventTypes(viewConfig: any) {
+  // Prefer getDefaultEventTypes, because getConstants() builds every view
+  // manager's config. Only bridge mode gets past this.
+  if (global.RN$LegacyInterop_UIManager_getDefaultEventTypes != null) {
+    merge(viewConfig, nullthrows(UIManager.getDefaultEventTypes)());
+    return;
+  }
   // This is supported on UIManager platforms (ex: Android),
   // as lazy view managers are not implemented for all platforms.
   // See [UIManager] for details on constants and implementations.
