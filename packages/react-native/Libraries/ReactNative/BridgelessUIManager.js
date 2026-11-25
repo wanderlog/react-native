@@ -43,6 +43,24 @@ const getUIManagerConstantsCached = (function () {
 const getConstantsForViewManager: ?(viewManagerName: string) => ?Object =
   global.RN$LegacyInterop_UIManager_getConstantsForViewManager;
 
+// Unknown names are cached as null too, because a miss is
+// slow on Android: every on-demand package tries to create the view manager.
+// That's safe, since the view managers are fixed when the instance is created.
+// Unlike upstream, the configs aren't also copied onto UIManager as properties
+// (UIManager.RCTView), because that builds every config at import. Use
+// getViewManagerConfig instead.
+const viewManagerConfigCache: Map<string, ?Object> = new Map();
+
+function getConstantsForViewManagerCached(viewManagerName: string): ?Object {
+  if (!viewManagerConfigCache.has(viewManagerName)) {
+    viewManagerConfigCache.set(
+      viewManagerName,
+      nullthrows(getConstantsForViewManager)(viewManagerName),
+    );
+  }
+  return viewManagerConfigCache.get(viewManagerName);
+}
+
 const getDefaultEventTypes: ?() => Object =
   global.RN$LegacyInterop_UIManager_getDefaultEventTypes;
 
@@ -166,19 +184,11 @@ const UIManagerJSPlatformAPIs = Platform.select({
   android: {
     getConstantsForViewManager: (viewManagerName: string): ?Object => {
       if (getConstantsForViewManager) {
-        return getConstantsForViewManager(viewManagerName);
+        return getConstantsForViewManagerCached(viewManagerName);
       }
 
       raiseSoftError('getConstantsForViewManager');
       return {};
-    },
-    getDefaultEventTypes: (): Array<string> => {
-      if (getDefaultEventTypes) {
-        return getDefaultEventTypesCached();
-      }
-
-      raiseSoftError('getDefaultEventTypes');
-      return [];
     },
     setLayoutAnimationEnabledExperimental: (enabled: boolean): void => {
       if (__DEV__) {
@@ -265,16 +275,13 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
   ...UIManagerJSPlatformAPIs,
   ...UIManagerJSUnusedInNewArchAPIs,
   getViewManagerConfig: (viewManagerName: string): unknown => {
-    // We use getConstantsForViewManager because getUIManagerConstants is much
-    // slower, since it builds the config for every view manager. Both
-    // platforms install the two bindings together, so we never need
-    // getUIManagerConstants here.
+    // There's no fallback to getUIManagerConstants, which builds every view
+    // manager's config. iOS and Android install getConstantsForViewManager
+    // whenever they install getConstants (both when
+    // useNativeViewConfigsInBridgelessMode is on), so the else branch only
+    // runs when that flag is off.
     if (getConstantsForViewManager) {
-      if (!(viewManagerName in viewManagerConfigCache)) {
-        viewManagerConfigCache[viewManagerName] =
-          getConstantsForViewManager(viewManagerName);
-      }
-      return viewManagerConfigCache[viewManagerName];
+      return getConstantsForViewManagerCached(viewManagerName);
     } else {
       raiseSoftError(
         `getViewManagerConfig('${viewManagerName}')`,
@@ -293,6 +300,16 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
       raiseSoftError('getConstants');
       return null;
     }
+  },
+  // On both platforms (unlike upstream, which only has it on Android), so
+  // getNativeComponentAttributes can skip getConstants() on iOS too
+  getDefaultEventTypes: (): Object => {
+    if (getDefaultEventTypes) {
+      return getDefaultEventTypesCached();
+    }
+
+    raiseSoftError('getDefaultEventTypes');
+    return {};
   },
   findSubviewIn: (
     reactTag: number,
@@ -394,7 +411,5 @@ const UIManagerJS: UIManagerJSInterface & {[string]: any} = {
     );
   },
 };
-
-const viewManagerConfigCache: {[viewManagerName: string]: ?Object} = {};
 
 export default UIManagerJS;

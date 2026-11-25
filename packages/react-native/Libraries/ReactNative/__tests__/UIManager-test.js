@@ -10,10 +10,6 @@
 
 'use strict';
 
-jest.mock('../../Utilities/Platform', () => ({
-  OS: 'android',
-  select: spec => spec.android ?? spec.native ?? spec.default,
-}));
 jest.unmock('../UIManager');
 
 const GLOBAL_NAMES = [
@@ -23,28 +19,35 @@ const GLOBAL_NAMES = [
   'RN$LegacyInterop_UIManager_getDefaultEventTypes',
 ];
 
+function getGlobal(name: string): unknown {
+  // $FlowExpectedError[prop-missing]
+  return global[name];
+}
+
 function setGlobal(name: string, value: unknown) {
   // $FlowExpectedError[prop-missing]
   global[name] = value;
 }
 
-describe('Bridgeless UIManager', () => {
+describe.each(['ios', 'android'])('Bridgeless UIManager on %s', platform => {
   const originalGlobals: {[string]: unknown} = {};
   const fullConstants = {
     LazyViewManagersEnabled: true,
     ViewManagerNames: ['RCTTestView'],
   };
   const viewManagerConfig = {Commands: {focus: 1}};
-  let getConstants = jest.fn();
-  let getConstantsForViewManager = jest.fn();
+  const defaultEventTypes = {bubblingEventTypes: {}, directEventTypes: {}};
+  let getConstants: JestMockFn<[], unknown>;
+  let getConstantsForViewManager: JestMockFn<[string], unknown>;
+  let getDefaultEventTypes: JestMockFn<[], unknown>;
 
   beforeEach(() => {
     for (const name of GLOBAL_NAMES) {
-      // $FlowExpectedError[prop-missing]
-      originalGlobals[name] = global[name];
+      originalGlobals[name] = getGlobal(name);
     }
     getConstants = jest.fn(() => fullConstants);
     getConstantsForViewManager = jest.fn(() => viewManagerConfig);
+    getDefaultEventTypes = jest.fn(() => defaultEventTypes);
     setGlobal('RN$Bridgeless', true);
     setGlobal('RN$LegacyInterop_UIManager_getConstants', getConstants);
     setGlobal(
@@ -53,9 +56,14 @@ describe('Bridgeless UIManager', () => {
     );
     setGlobal(
       'RN$LegacyInterop_UIManager_getDefaultEventTypes',
-      jest.fn(() => ({})),
+      getDefaultEventTypes,
     );
     jest.resetModules();
+    jest.doMock('../../Utilities/Platform', () => ({
+      OS: platform,
+      select: (spec: {[string]: unknown}) =>
+        spec[platform] ?? spec.native ?? spec.default,
+    }));
   });
 
   afterEach(() => {
@@ -109,11 +117,55 @@ describe('Bridgeless UIManager', () => {
     expect(getConstants).not.toHaveBeenCalled();
   });
 
+  it('caches the default event types', () => {
+    const UIManager = require('../UIManager').default;
+
+    expect(UIManager.getDefaultEventTypes?.()).toBe(defaultEventTypes);
+    expect(UIManager.getDefaultEventTypes?.()).toBe(defaultEventTypes);
+    expect(getDefaultEventTypes).toHaveBeenCalledTimes(1);
+  });
+
   it('still returns the full constants from getConstants()', () => {
     const UIManager = require('../UIManager').default;
 
     expect(UIManager.getConstants()).toBe(fullConstants);
     expect(UIManager.getConstants()).toBe(fullConstants);
     expect(getConstants).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Bridgeless UIManager on android', () => {
+  afterEach(() => {
+    setGlobal('RN$Bridgeless', undefined);
+    setGlobal(
+      'RN$LegacyInterop_UIManager_getConstantsForViewManager',
+      undefined,
+    );
+    jest.resetModules();
+  });
+
+  it('shares the config cache with getConstantsForViewManager', () => {
+    const viewManagerConfig = {Commands: {}};
+    const getConstantsForViewManager = jest.fn(() => viewManagerConfig);
+    setGlobal('RN$Bridgeless', true);
+    setGlobal(
+      'RN$LegacyInterop_UIManager_getConstantsForViewManager',
+      getConstantsForViewManager,
+    );
+    jest.resetModules();
+    jest.doMock('../../Utilities/Platform', () => ({
+      OS: 'android',
+      select: (spec: {[string]: unknown}) =>
+        spec.android ?? spec.native ?? spec.default,
+    }));
+    const UIManager = require('../UIManager').default;
+
+    expect(UIManager.getViewManagerConfig('RCTTestView')).toBe(
+      viewManagerConfig,
+    );
+    expect(UIManager.getConstantsForViewManager?.('RCTTestView')).toBe(
+      viewManagerConfig,
+    );
+    expect(getConstantsForViewManager).toHaveBeenCalledTimes(1);
   });
 });

@@ -17,8 +17,10 @@
 namespace facebook::react {
 namespace {
 
-// Maps each view manager's JS name (e.g. "RCTView") to its class. Finding the
-// names is cheap. Building each view config is the slow part.
+// Maps each view manager's JS name (e.g. "RCTView") to its class. Cached so
+// each getConstantsForViewManager call is a lookup instead of a scan of every
+// module class. Modules register in +load, before JS runs, so the map can't
+// go stale.
 NSDictionary<NSString *, Class> *getViewManagerClassesByName()
 {
   static NSDictionary<NSString *, Class> *viewManagerClassesByName;
@@ -35,7 +37,10 @@ NSDictionary<NSString *, Class> *getViewManagerClassesByName()
   return viewManagerClassesByName;
 }
 
-NSMutableDictionary<NSString *, id> *getModuleConstants(
+// Builds one view manager's config. directEvents and bubblingEvents are shared
+// across calls to dedupe event entries and to report, in debug builds, an event
+// registered as direct by one view manager and bubbling by another.
+NSMutableDictionary<NSString *, id> *viewConfigForViewManagerClass(
     Class moduleClass,
     NSString *name,
     NSMutableDictionary<NSString *, NSDictionary *> *directEvents,
@@ -52,13 +57,14 @@ jsi::Value getConstants(facebook::jsi::Runtime &runtime)
   auto bubblingEvents = [NSMutableDictionary new];
   [getViewManagerClassesByName()
       enumerateKeysAndObjectsUsingBlock:^(NSString *name, Class moduleClass, __unused BOOL *stop) {
-        result[name] = getModuleConstants(moduleClass, name, directEvents, bubblingEvents);
+        result[name] = viewConfigForViewManagerClass(moduleClass, name, directEvents, bubblingEvents);
       }];
   return TurboModuleConvertUtils::convertObjCObjectToJSIValue(runtime, result);
 };
 
 // One view manager's entry from getConstants(), or null if there's no view
-// manager with that name
+// manager with that name. The fresh event dictionaries give the same config,
+// but skip the cross-view-manager debug check; getConstants() still runs it.
 jsi::Value getConstantsForViewManager(facebook::jsi::Runtime &runtime, const std::string &viewManagerName)
 {
   NSString *name = [NSString stringWithUTF8String:viewManagerName.c_str()];
@@ -67,15 +73,11 @@ jsi::Value getConstantsForViewManager(facebook::jsi::Runtime &runtime, const std
     return jsi::Value::null();
   }
   return TurboModuleConvertUtils::convertObjCObjectToJSIValue(
-      runtime, getModuleConstants(moduleClass, name, [NSMutableDictionary new], [NSMutableDictionary new]));
+      runtime, viewConfigForViewManagerClass(moduleClass, name, [NSMutableDictionary new], [NSMutableDictionary new]));
 }
 
-// iOS has no generic event types, so this is empty. Unlike Android
-// (https://github.com/facebook/react-native/blob/v0.86.3/packages/react-native/ReactAndroid/src/main/java/com/facebook/react/uimanager/UIManagerModuleConstantsHelper.kt#L128-L129),
-// iOS's UIManager constants only have one entry per view manager
-// (https://github.com/facebook/react-native/blob/v0.86.3/packages/react-native/React/Modules/RCTUIManager.mm#L1508-L1523).
-// Events that every view supports, like touches, are in JS instead
-// (https://github.com/facebook/react-native/blob/v0.86.3/packages/react-native/Libraries/NativeComponent/BaseViewConfig.ios.js#L24).
+// Empty: unlike Android, iOS UIManager constants have no generic event types.
+// Events every view supports, like touches, are in BaseViewConfig.ios.js.
 jsi::Value getDefaultEventTypes(facebook::jsi::Runtime &runtime)
 {
   return jsi::Object(runtime);

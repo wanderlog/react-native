@@ -33,13 +33,6 @@ const sizesDiffer = require('../Utilities/differ/sizesDiffer').default;
 const UIManager = require('./UIManager').default;
 const nullthrows = require('nullthrows');
 
-// Installed in bridgeless mode when useNativeViewConfigsInBridgelessMode is on.
-// Missing in bridge mode.
-const getDefaultEventTypes: ?() => Object =
-  global.RN$LegacyInterop_UIManager_getDefaultEventTypes;
-// Cached, because Android builds the event types natively on every call
-let defaultEventTypes: ?Object = null;
-
 function getNativeComponentAttributes(uiViewClassName: string): any {
   const viewConfig = UIManager.getViewManagerConfig(uiViewClassName);
 
@@ -117,17 +110,13 @@ function getNativeComponentAttributes(uiViewClassName: string): any {
 }
 
 function attachDefaultEventTypes(viewConfig: any) {
-  // Prefer getDefaultEventTypes, because getConstants() is much slower
-  if (getDefaultEventTypes != null) {
-    if (defaultEventTypes == null) {
-      defaultEventTypes = getDefaultEventTypes();
-    }
-    merge(viewConfig, defaultEventTypes);
+  // Prefer getDefaultEventTypes, because getConstants() builds every view
+  // manager's config. The binding is installed in bridgeless mode whenever
+  // getViewManagerConfig works, so only bridge mode gets past this.
+  if (global.RN$LegacyInterop_UIManager_getDefaultEventTypes != null) {
+    merge(viewConfig, nullthrows(UIManager.getDefaultEventTypes)());
     return;
   }
-  // Everything below only runs in bridge mode, or in bridgeless mode when
-  // useNativeViewConfigsInBridgelessMode is off.
-  //
   // This is supported on UIManager platforms (ex: Android),
   // as lazy view managers are not implemented for all platforms.
   // See [UIManager] for details on constants and implementations.
