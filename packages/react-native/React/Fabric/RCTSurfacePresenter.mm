@@ -167,19 +167,14 @@ using namespace facebook::react;
   if (componentView == nil) {
     return; // This view probably isn't managed by Fabric
   }
-  ComponentHandle handle = [[componentView class] componentDescriptorProvider].handle;
+  // Legacy interop views (like react-native-maps' iOS Google polylines) share one view class, but each legacy view
+  // manager is registered under its own handle. See the "Paper Interop" fallback in RCTComponentViewFactory.mm. The
+  // class's handle would miss, and we'd drop their native-driver Animated updates, so we read the handle off the view.
+  ComponentHandle handle = [componentView isKindOfClass:[RCTLegacyViewManagerInteropComponentView class]]
+      // The isKindOfClass: check makes this cast safe
+      ? [(RCTLegacyViewManagerInteropComponentView *)componentView componentHandle]
+      : [[componentView class] componentDescriptorProvider].handle;
   auto *componentDescriptor = [scheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:handle];
-
-  // Wanderlog patch: legacy interop views (like react-native-maps' iOS Google
-  // polylines) are registered under a handle per component name, not the
-  // generic handle their view class reports. So the lookup above misses them,
-  // and native-driver Animated updates were silently dropped. Look them up by
-  // name instead.
-  if (!componentDescriptor && [componentView isKindOfClass:[RCTLegacyViewManagerInteropComponentView class]]) {
-    NSString *componentName =
-        [(RCTLegacyViewManagerInteropComponentView *)componentView componentViewName_DO_NOT_USE_THIS_IS_BROKEN];
-    componentDescriptor = [scheduler findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN:RCTStringFromNSString(componentName)];
-  }
 
   if (!componentDescriptor) {
     return;

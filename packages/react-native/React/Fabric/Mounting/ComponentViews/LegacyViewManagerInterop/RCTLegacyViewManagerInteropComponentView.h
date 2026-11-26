@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 
 #import <React/RCTViewComponentView.h>
+#import <folly/dynamic.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -27,6 +28,21 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (UIView *)paperView;
 
+/**
+ * The handle this view's component descriptor is registered under, or 0 before the view gets state. Use this instead
+ * of the class's componentDescriptorProvider handle, which is the same generic handle for every legacy view manager.
+ */
+- (facebook::react::ComponentHandle)componentHandle;
+
 @end
+
+/**
+ * Returns the props that differ from `sentProps`, and records them in `sentProps`. Leaves out `propKeysToSkip`, which
+ * native-driver Animated owns.
+ */
+folly::dynamic RCTLegacyViewManagerInteropDiffProps(
+    const folly::dynamic &props,
+    folly::dynamic &sentProps,
+    NSSet<NSString *> *_Nullable propKeysToSkip);
 
 NS_ASSUME_NONNULL_END

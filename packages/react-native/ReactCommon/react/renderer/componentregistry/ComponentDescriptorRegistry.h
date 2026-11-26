@@ -47,15 +47,6 @@ class ComponentDescriptorRegistry {
   const ComponentDescriptor *findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN(
       ComponentHandle componentHandle) const;
 
-  /*
-   * Wanderlog patch: like the handle lookup above, but by component name.
-   * Legacy interop views are registered under a handle per component name,
-   * so their view class can't tell us which handle to look up. Returns
-   * nullptr instead of the fallback descriptor when the name is missing.
-   */
-  const ComponentDescriptor *findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN(
-      const std::string &componentName) const;
-
   const ComponentDescriptor &at(const std::string &componentName) const;
   const ComponentDescriptor &at(ComponentHandle componentHandle) const;
 

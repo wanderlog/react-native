@@ -171,6 +171,7 @@ void LegacyViewManagerInteropComponentDescriptor::adopt(ShadowNode &shadowNode) 
 
   auto state = LegacyViewManagerInteropState{};
   state.coordinator = _coordinator;
+  state.componentHandle = getComponentHandle();
 
   legacyViewManagerInteropShadowNode.setStateData(std::move(state));
 }

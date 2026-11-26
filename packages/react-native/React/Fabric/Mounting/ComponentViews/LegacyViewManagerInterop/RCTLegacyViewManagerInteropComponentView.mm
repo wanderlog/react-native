@@ -10,6 +10,7 @@
 #import <React/RCTAssert.h>
 #import <React/RCTBridge+Private.h>
 #import <React/RCTConstants.h>
+#import <React/RCTConversions.h>
 #import <React/UIView+React.h>
 #import <react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropComponentDescriptor.h>
 #import <react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropViewProps.h>
@@ -21,12 +22,44 @@ using namespace facebook::react;
 static NSString *const kRCTLegacyInteropChildComponentKey = @"childComponentView";
 static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 
+folly::dynamic RCTLegacyViewManagerInteropDiffProps(
+    const folly::dynamic &props,
+    folly::dynamic &sentProps,
+    NSSet<NSString *> *_Nullable propKeysToSkip)
+{
+  folly::dynamic changedProps = folly::dynamic::object();
+  for (const auto &[key, value] : props.items()) {
+    if (propKeysToSkip != nil && [propKeysToSkip containsObject:RCTNSStringFromString(key.asString())]) {
+      continue;
+    }
+    auto sentProp = sentProps.find(key);
+    if (sentProp != sentProps.items().end() && sentProp->second == value) {
+      continue;
+    }
+    changedProps[key] = value;
+    sentProps[key] = value;
+  }
+  return changedProps;
+}
+
 @implementation RCTLegacyViewManagerInteropComponentView {
   NSMutableArray<NSDictionary *> *_viewsToBeMounted;
   NSMutableArray<UIView *> *_viewsToBeUnmounted;
   RCTLegacyViewManagerInteropCoordinatorAdapter *_adapter;
   LegacyViewManagerInteropShadowNode::ConcreteState::Shared _state;
   BOOL _hasInvokedForwardingWarning;
+  /**
+   * The props we last sent to the paper view. We diff against these so a frame of a native-driver animation only
+   * converts and sends the keys it changed, not every prop (e.g. a polyline's whole coordinates array).
+   */
+  folly::dynamic _sentProps;
+  /**
+   * Keys that native-driver Animated owns, for the props update in progress. Animated clears
+   * propKeysManagedByAnimated while it applies its own frame, so this is nil then. On a JS commit it holds the animated
+   * keys, and we skip them so the paper view keeps its animated value instead of the stale JS one.
+   * RCTViewComponentView does the same for opacity and transform.
+   */
+  NSSet<NSString *> *_Nullable _propKeysToSkip;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -36,6 +69,7 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
     _viewsToBeMounted = [NSMutableArray new];
     _viewsToBeUnmounted = [NSMutableArray new];
     _hasInvokedForwardingWarning = NO;
+    _sentProps = folly::dynamic::object();
   }
 
   return self;
@@ -49,6 +83,11 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
   } else {
     return nil;
   }
+}
+
+- (ComponentHandle)componentHandle
+{
+  return _state != nullptr ? _state->getData().componentHandle : 0;
 }
 
 - (NSString *)componentViewName_DO_NOT_USE_THIS_IS_BROKEN
@@ -165,6 +204,8 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
   _state.reset();
   self.contentView = nil;
   _hasInvokedForwardingWarning = NO;
+  _sentProps = folly::dynamic::object();
+  _propKeysToSkip = nil;
   [super prepareForRecycle];
 }
 
@@ -202,6 +243,12 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 + (ComponentDescriptorProvider)componentDescriptorProvider
 {
   return concreteComponentDescriptorProvider<LegacyViewManagerInteropComponentDescriptor>();
+}
+
+- (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &)oldProps
+{
+  _propKeysToSkip = self.propKeysManagedByAnimated_DO_NOT_USE_THIS_IS_BROKEN;
+  [super updateProps:props oldProps:oldProps];
 }
 
 - (void)updateState:(const State::Shared &)state oldState:(const State::Shared &)oldState
@@ -271,7 +318,11 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 {
   if (updateMask & RNComponentViewUpdateMaskProps) {
     const auto &newProps = static_cast<const LegacyViewManagerInteropViewProps &>(*_props);
-    [_adapter setProps:newProps.otherProps];
+    folly::dynamic changedProps =
+        RCTLegacyViewManagerInteropDiffProps(newProps.otherProps, _sentProps, _propKeysToSkip);
+    if (!changedProps.empty()) {
+      [_adapter setProps:changedProps];
+    }
   }
 }
 

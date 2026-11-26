@@ -126,20 +126,6 @@ const ComponentDescriptor* ComponentDescriptorRegistry::
   return iterator->second.get();
 }
 
-const ComponentDescriptor* ComponentDescriptorRegistry::
-    findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN(
-        const std::string& componentName) const {
-  std::shared_lock lock(mutex_);
-
-  auto iterator =
-      _registryByName.find(componentNameByReactViewName(componentName));
-  if (iterator == _registryByName.end()) {
-    return nullptr;
-  }
-
-  return iterator->second.get();
-}
-
 const ComponentDescriptor& ComponentDescriptorRegistry::at(
     ComponentHandle componentHandle) const {
   std::shared_lock lock(mutex_);

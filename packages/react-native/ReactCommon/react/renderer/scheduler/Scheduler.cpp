@@ -267,13 +267,6 @@ Scheduler::findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN(
       ->findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN(handle);
 }
 
-const ComponentDescriptor*
-Scheduler::findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN(
-    const std::string& componentName) const {
-  return componentDescriptorRegistry_
-      ->findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN(componentName);
-}
-
 #pragma mark - Delegate
 
 void Scheduler::setDelegate(SchedulerDelegate* delegate) {
