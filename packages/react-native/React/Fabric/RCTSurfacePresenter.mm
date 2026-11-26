@@ -170,6 +170,7 @@ using namespace facebook::react;
   // Legacy interop views (like react-native-maps' iOS Google polylines) share one view class, but each legacy view
   // manager is registered under its own handle. See the "Paper Interop" fallback in RCTComponentViewFactory.mm. The
   // class's handle would miss, and we'd drop their native-driver Animated updates, so we read the handle off the view.
+  // For the whole flow, see the comment above @implementation in RCTLegacyViewManagerInteropComponentView.mm.
   ComponentHandle handle = [componentView isKindOfClass:[RCTLegacyViewManagerInteropComponentView class]]
       // The isKindOfClass: check makes this cast safe
       ? [(RCTLegacyViewManagerInteropComponentView *)componentView componentHandle]

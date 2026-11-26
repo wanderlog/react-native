@@ -22,26 +22,48 @@ using namespace facebook::react;
 static NSString *const kRCTLegacyInteropChildComponentKey = @"childComponentView";
 static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 
-folly::dynamic RCTLegacyViewManagerInteropDiffProps(
-    const folly::dynamic &props,
-    folly::dynamic &sentProps,
-    NSSet<NSString *> *_Nullable propKeysToSkip)
-{
-  folly::dynamic changedProps = folly::dynamic::object();
-  for (const auto &[key, value] : props.items()) {
-    if (propKeysToSkip != nil && [propKeysToSkip containsObject:RCTNSStringFromString(key.asString())]) {
-      continue;
-    }
-    auto sentProp = sentProps.find(key);
-    if (sentProp != sentProps.items().end() && sentProp->second == value) {
-      continue;
-    }
-    changedProps[key] = value;
-    sentProps[key] = value;
-  }
-  return changedProps;
-}
-
+/**
+ * How native-driver Animated updates reach a legacy (Paper) view
+ *
+ * Every legacy view manager (e.g. react-native-maps' AIRGoogleMapPolyline) renders through this one view class,
+ * RCTLegacyViewManagerInteropComponentView. But each manager gets its own LegacyViewManagerInteropComponentDescriptor,
+ * registered in the ComponentDescriptorRegistry under its own handle (see the "Paper Interop" fallback in
+ * RCTComponentViewFactory.mm).
+ *
+ * Before: the frame gets dropped
+ *
+ * 1. Animated draws a frame. RCTPropsAnimatedNode computes the frame's props (e.g. a new `strokeColor`), and calls
+ *    -[RCTSurfacePresenter synchronouslyUpdateViewOnUIThread:props:].
+ * 2. RCTSurfacePresenter's schedulerDidSynchronouslyUpdateViewOnUIThread:props: finds this view with
+ *    -[RCTComponentViewRegistry findComponentViewWithTag:].
+ * 3. It takes the handle from +[RCTLegacyViewManagerInteropComponentView componentDescriptorProvider], and passes it
+ *    to -[RCTScheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:].
+ * 4. That's the generic LegacyViewManagerInterop handle, and no descriptor is registered under it. So the lookup
+ *    returns null, and RCTSurfacePresenter returns without a warning.
+ * 5. AIRGoogleMapPolyline never sees the frame. A fading polyline stays hidden until JS re-renders it with its final
+ *    props.
+ *
+ * After: the frame reaches the paper view
+ *
+ * 1. Animated draws a frame, and RCTSurfacePresenter finds this view, the same as before.
+ * 2. RCTSurfacePresenter reads -[RCTLegacyViewManagerInteropComponentView componentHandle] instead. That's
+ *    LegacyViewManagerInteropComponentDescriptor::getComponentHandle(), which the descriptor's adopt() stored in
+ *    LegacyViewManagerInteropState::componentHandle.
+ * 3. -[RCTScheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:] finds this manager's descriptor.
+ *    RCTSurfacePresenter passes it to -[RCTMountingManager synchronouslyUpdateViewOnUIThread:changedProps:
+ *    componentDescriptor:], which calls the descriptor's cloneProps() to merge the frame's props into
+ *    LegacyViewManagerInteropViewProps::otherProps.
+ * 4. RCTMountingManager then calls this view's updateProps:oldProps: with propKeysManagedByAnimated cleared, so
+ *    `_propKeysToSkip` is nil. It puts the animated keys back afterwards.
+ * 5. RCTMountingManager calls this view's finalizeUpdates:. Its _setPropsWithUpdateMask: passes only the changed props
+ *    (RCTLegacyViewManagerInteropDiffProps) to -[RCTLegacyViewManagerInteropCoordinatorAdapter setProps:].
+ * 6. The adapter goes through RCTLegacyViewManagerInteropCoordinator to the paper view's setter, like
+ *    -[AIRGoogleMapPolyline setStrokeColor:].
+ *
+ * When JS commits later (e.g. it re-renders the polyline), RCTMountingManager calls updateProps:oldProps: with the
+ * animated keys still set. So RCTLegacyViewManagerInteropDiffProps skips them, and AIRGoogleMapPolyline keeps its
+ * animated value.
+ */
 @implementation RCTLegacyViewManagerInteropComponentView {
   NSMutableArray<NSDictionary *> *_viewsToBeMounted;
   NSMutableArray<UIView *> *_viewsToBeUnmounted;
@@ -350,3 +372,23 @@ folly::dynamic RCTLegacyViewManagerInteropDiffProps(
 }
 
 @end
+
+folly::dynamic RCTLegacyViewManagerInteropDiffProps(
+    const folly::dynamic &props,
+    folly::dynamic &sentProps,
+    NSSet<NSString *> *_Nullable propKeysToSkip)
+{
+  folly::dynamic changedProps = folly::dynamic::object();
+  for (const auto &[key, value] : props.items()) {
+    if (propKeysToSkip != nil && [propKeysToSkip containsObject:RCTNSStringFromString(key.asString())]) {
+      continue;
+    }
+    auto sentProp = sentProps.find(key);
+    if (sentProp != sentProps.items().end() && sentProp->second == value) {
+      continue;
+    }
+    changedProps[key] = value;
+    sentProps[key] = value;
+  }
+  return changedProps;
+}
