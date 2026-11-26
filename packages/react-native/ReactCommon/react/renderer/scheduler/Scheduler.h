@@ -58,6 +58,8 @@ class Scheduler final : public UIManagerDelegate {
    * there is no any guarantees about their lifetime.
    */
   const ComponentDescriptor *findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN(ComponentHandle handle) const;
+  const ComponentDescriptor *findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN(
+      const std::string &componentName) const;
 
 #pragma mark - Delegate
 

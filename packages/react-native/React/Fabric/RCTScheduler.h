@@ -63,6 +63,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (const facebook::react::ComponentDescriptor *)findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:
     (facebook::react::ComponentHandle)handle;
 
+- (const facebook::react::ComponentDescriptor *)findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN:
+    (const std::string &)componentName;
+
 - (void)setupAnimationDriver:(const facebook::react::SurfaceHandler &)surfaceHandler;
 
 - (void)onAnimationStarted;

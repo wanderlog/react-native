@@ -17,6 +17,7 @@
 #import <React/RCTConstants.h>
 #import <React/RCTFabricSurface.h>
 #import <React/RCTI18nUtil.h>
+#import <React/RCTLegacyViewManagerInteropComponentView.h>
 #import <React/RCTMountingManager.h>
 #import <React/RCTMountingManagerDelegate.h>
 #import <React/RCTScheduler.h>
@@ -168,6 +169,17 @@ using namespace facebook::react;
   }
   ComponentHandle handle = [[componentView class] componentDescriptorProvider].handle;
   auto *componentDescriptor = [scheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:handle];
+
+  // Wanderlog patch: legacy interop views (like react-native-maps' iOS Google
+  // polylines) are registered under a handle per component name, not the
+  // generic handle their view class reports. So the lookup above misses them,
+  // and native-driver Animated updates were silently dropped. Look them up by
+  // name instead.
+  if (!componentDescriptor && [componentView isKindOfClass:[RCTLegacyViewManagerInteropComponentView class]]) {
+    NSString *componentName =
+        [(RCTLegacyViewManagerInteropComponentView *)componentView componentViewName_DO_NOT_USE_THIS_IS_BROKEN];
+    componentDescriptor = [scheduler findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN:RCTStringFromNSString(componentName)];
+  }
 
   if (!componentDescriptor) {
     return;

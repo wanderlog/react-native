@@ -253,6 +253,11 @@ class RCTAnimationChoreographer : public AnimationChoreographer {
   return _scheduler->findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN(handle);
 }
 
+- (const ComponentDescriptor *)findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN:(const std::string &)componentName
+{
+  return _scheduler->findComponentDescriptorByName_DO_NOT_USE_THIS_IS_BROKEN(componentName);
+}
+
 - (void)setupAnimationDriver:(const facebook::react::SurfaceHandler &)surfaceHandler
 {
   surfaceHandler.getMountingCoordinator()->setMountingOverrideDelegate(_animationDriver);
