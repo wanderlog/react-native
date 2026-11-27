@@ -18,10 +18,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy, nullable) void (^eventInterceptor)(std::string eventName, folly::dynamic &&event);
 
-- (void)setProps:(const folly::dynamic &)props;
+/**
+ * Sends the paper view only the props that changed since the last call, leaving out `propKeysToSkip`, which
+ * native-driver Animated owns.
+ */
+- (void)setProps:(const folly::dynamic &)props propKeysToSkip:(nullable NSSet<NSString *> *)propKeysToSkip;
 
 - (void)handleCommand:(NSString *)commandName args:(NSArray *)args;
 
 @end
+
+/**
+ * Returns the props that differ from `sentProps`, and records them in `sentProps`. Leaves out `propKeysToSkip`, which
+ * native-driver Animated owns.
+ */
+folly::dynamic RCTLegacyViewManagerInteropDiffProps(
+    const folly::dynamic &props,
+    folly::dynamic &sentProps,
+    NSSet<NSString *> *_Nullable propKeysToSkip);
 
 NS_ASSUME_NONNULL_END

@@ -8,7 +8,6 @@
 #import <UIKit/UIKit.h>
 
 #import <React/RCTViewComponentView.h>
-#import <folly/dynamic.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -35,14 +34,5 @@ NS_ASSUME_NONNULL_BEGIN
 - (facebook::react::ComponentHandle)componentHandle;
 
 @end
-
-/**
- * Returns the props that differ from `sentProps`, and records them in `sentProps`. Leaves out `propKeysToSkip`, which
- * native-driver Animated owns.
- */
-folly::dynamic RCTLegacyViewManagerInteropDiffProps(
-    const folly::dynamic &props,
-    folly::dynamic &sentProps,
-    NSSet<NSString *> *_Nullable propKeysToSkip);
 
 NS_ASSUME_NONNULL_END

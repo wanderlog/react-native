@@ -7,7 +7,7 @@
 
 #import <XCTest/XCTest.h>
 
-#import <React/RCTLegacyViewManagerInteropComponentView.h>
+#import <React/RCTLegacyViewManagerInteropCoordinatorAdapter.h>
 
 @interface RCTLegacyViewManagerInteropDiffPropsTests : XCTestCase
 

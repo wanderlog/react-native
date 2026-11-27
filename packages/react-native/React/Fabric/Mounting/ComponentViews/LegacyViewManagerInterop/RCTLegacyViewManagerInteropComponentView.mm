@@ -10,7 +10,6 @@
 #import <React/RCTAssert.h>
 #import <React/RCTBridge+Private.h>
 #import <React/RCTConstants.h>
-#import <React/RCTConversions.h>
 #import <React/UIView+React.h>
 #import <react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropComponentDescriptor.h>
 #import <react/renderer/components/legacyviewmanagerinterop/LegacyViewManagerInteropViewProps.h>
@@ -23,46 +22,23 @@ static NSString *const kRCTLegacyInteropChildComponentKey = @"childComponentView
 static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 
 /**
- * How native-driver Animated updates reach a legacy (Paper) view
+ * How native-driver Animated frames reach a legacy (Paper) view
  *
- * Every legacy view manager (e.g. react-native-maps' AIRGoogleMapPolyline) renders through this one view class,
- * RCTLegacyViewManagerInteropComponentView. But each manager gets its own LegacyViewManagerInteropComponentDescriptor,
- * registered in the ComponentDescriptorRegistry under its own handle (see the "Paper Interop" fallback in
- * RCTComponentViewFactory.mm).
+ * Every legacy view manager (e.g. react-native-maps' AIRGoogleMapPolyline) renders through this one view class, but
+ * each manager registers its own component descriptor under its own handle. Animated frames used to look up the
+ * descriptor by this class's shared handle, find nothing, and get dropped without a warning.
  *
- * Before: the frame gets dropped
+ * Now, for each frame:
  *
- * 1. Animated draws a frame. RCTPropsAnimatedNode computes the frame's props (e.g. a new `strokeColor`), and calls
- *    -[RCTSurfacePresenter synchronouslyUpdateViewOnUIThread:props:].
- * 2. RCTSurfacePresenter's schedulerDidSynchronouslyUpdateViewOnUIThread:props: finds this view with
- *    -[RCTComponentViewRegistry findComponentViewWithTag:].
- * 3. It takes the handle from +[RCTLegacyViewManagerInteropComponentView componentDescriptorProvider], and passes it
- *    to -[RCTScheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:].
- * 4. That's the generic LegacyViewManagerInterop handle, and no descriptor is registered under it. So the lookup
- *    returns null, and RCTSurfacePresenter returns without a warning.
- * 5. AIRGoogleMapPolyline never sees the frame. A fading polyline stays hidden until JS re-renders it with its final
- *    props.
+ * 1. Animated works out the frame's props, like a polyline's new stroke color, and hands them to RCTSurfacePresenter.
+ * 2. RCTSurfacePresenter asks this view for its own handle (componentHandle), and finds this manager's descriptor.
+ * 3. RCTMountingManager merges the frame's props into this view's props. It calls updateProps:oldProps: with
+ *    Animated's keys cleared, so we don't skip any of them.
+ * 4. In finalizeUpdates:, the adapter sends the paper view only the props that changed, and the paper view's setter
+ *    runs (e.g. -[AIRGoogleMapPolyline setStrokeColor:]).
  *
- * After: the frame reaches the paper view
- *
- * 1. Animated draws a frame, and RCTSurfacePresenter finds this view, the same as before.
- * 2. RCTSurfacePresenter reads -[RCTLegacyViewManagerInteropComponentView componentHandle] instead. That's
- *    LegacyViewManagerInteropComponentDescriptor::getComponentHandle(), which the descriptor's adopt() stored in
- *    LegacyViewManagerInteropState::componentHandle.
- * 3. -[RCTScheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:] finds this manager's descriptor.
- *    RCTSurfacePresenter passes it to -[RCTMountingManager synchronouslyUpdateViewOnUIThread:changedProps:
- *    componentDescriptor:], which calls the descriptor's cloneProps() to merge the frame's props into
- *    LegacyViewManagerInteropViewProps::otherProps.
- * 4. RCTMountingManager then calls this view's updateProps:oldProps: with propKeysManagedByAnimated cleared, so
- *    `_propKeysToSkip` is nil. It puts the animated keys back afterwards.
- * 5. RCTMountingManager calls this view's finalizeUpdates:. Its _setPropsWithUpdateMask: passes only the changed props
- *    (RCTLegacyViewManagerInteropDiffProps) to -[RCTLegacyViewManagerInteropCoordinatorAdapter setProps:].
- * 6. The adapter goes through RCTLegacyViewManagerInteropCoordinator to the paper view's setter, like
- *    -[AIRGoogleMapPolyline setStrokeColor:].
- *
- * When JS commits later (e.g. it re-renders the polyline), RCTMountingManager calls updateProps:oldProps: with the
- * animated keys still set. So RCTLegacyViewManagerInteropDiffProps skips them, and AIRGoogleMapPolyline keeps its
- * animated value.
+ * When JS re-renders the view later, Animated's keys are still set during updateProps:oldProps:. So we skip them,
+ * and the paper view keeps its animated value instead of the stale JS one.
  */
 @implementation RCTLegacyViewManagerInteropComponentView {
   NSMutableArray<NSDictionary *> *_viewsToBeMounted;
@@ -71,15 +47,8 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
   LegacyViewManagerInteropShadowNode::ConcreteState::Shared _state;
   BOOL _hasInvokedForwardingWarning;
   /**
-   * The props we last sent to the paper view. We diff against these so a frame of a native-driver animation only
-   * converts and sends the keys it changed, not every prop (e.g. a polyline's whole coordinates array).
-   */
-  folly::dynamic _sentProps;
-  /**
-   * Keys that native-driver Animated owns, for the props update in progress. Animated clears
-   * propKeysManagedByAnimated while it applies its own frame, so this is nil then. On a JS commit it holds the animated
-   * keys, and we skip them so the paper view keeps its animated value instead of the stale JS one.
-   * RCTViewComponentView does the same for opacity and transform.
+   * Keys that native-driver Animated owns, for the props update in progress. We skip them on a JS commit so the paper
+   * view keeps its animated value instead of the stale JS one.
    */
   NSSet<NSString *> *_Nullable _propKeysToSkip;
 }
@@ -91,7 +60,6 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
     _viewsToBeMounted = [NSMutableArray new];
     _viewsToBeUnmounted = [NSMutableArray new];
     _hasInvokedForwardingWarning = NO;
-    _sentProps = folly::dynamic::object();
   }
 
   return self;
@@ -226,7 +194,6 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
   _state.reset();
   self.contentView = nil;
   _hasInvokedForwardingWarning = NO;
-  _sentProps = folly::dynamic::object();
   _propKeysToSkip = nil;
   [super prepareForRecycle];
 }
@@ -269,6 +236,9 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 
 - (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &)oldProps
 {
+  // This is named "broken" because once Animated touches a key, JS can't set that key again until the view is
+  // recycled. That's what we want here: Animated owns those keys, like opacity and transform in RCTViewComponentView.
+  // It's nil only while RCTMountingManager applies an Animated frame, so it tells a frame apart from a JS commit.
   _propKeysToSkip = self.propKeysManagedByAnimated_DO_NOT_USE_THIS_IS_BROKEN;
   [super updateProps:props oldProps:oldProps];
 }
@@ -340,11 +310,7 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 {
   if (updateMask & RNComponentViewUpdateMaskProps) {
     const auto &newProps = static_cast<const LegacyViewManagerInteropViewProps &>(*_props);
-    folly::dynamic changedProps =
-        RCTLegacyViewManagerInteropDiffProps(newProps.otherProps, _sentProps, _propKeysToSkip);
-    if (!changedProps.empty()) {
-      [_adapter setProps:changedProps];
-    }
+    [_adapter setProps:newProps.otherProps propKeysToSkip:_propKeysToSkip];
   }
 }
 
@@ -372,23 +338,3 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 }
 
 @end
-
-folly::dynamic RCTLegacyViewManagerInteropDiffProps(
-    const folly::dynamic &props,
-    folly::dynamic &sentProps,
-    NSSet<NSString *> *_Nullable propKeysToSkip)
-{
-  folly::dynamic changedProps = folly::dynamic::object();
-  for (const auto &[key, value] : props.items()) {
-    if (propKeysToSkip != nil && [propKeysToSkip containsObject:RCTNSStringFromString(key.asString())]) {
-      continue;
-    }
-    auto sentProp = sentProps.find(key);
-    if (sentProp != sentProps.items().end() && sentProp->second == value) {
-      continue;
-    }
-    changedProps[key] = value;
-    sentProps[key] = value;
-  }
-  return changedProps;
-}
