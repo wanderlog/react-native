@@ -27,12 +27,6 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (UIView *)paperView;
 
-/**
- * The handle this view's component descriptor is registered under, or 0 before the view gets state. Use this instead
- * of the class's componentDescriptorProvider handle, which is the same generic handle for every legacy view manager.
- */
-- (facebook::react::ComponentHandle)componentHandle;
-
 @end
 
 NS_ASSUME_NONNULL_END

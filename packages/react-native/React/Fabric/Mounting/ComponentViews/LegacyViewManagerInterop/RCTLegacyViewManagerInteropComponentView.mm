@@ -31,7 +31,7 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
  * Now, for each frame:
  *
  * 1. Animated works out the frame's props, like a polyline's new stroke color, and hands them to RCTSurfacePresenter.
- * 2. RCTSurfacePresenter asks this view for its own handle (componentHandle), and finds this manager's descriptor.
+ * 2. RCTSurfacePresenter finds this manager's descriptor using the handle the view registry created this view for.
  * 3. RCTMountingManager merges the frame's props into this view's props. It calls updateProps:oldProps: with
  *    Animated's keys cleared, so we don't skip any of them.
  * 4. In finalizeUpdates:, the adapter sends the paper view only the props that changed, and the paper view's setter
@@ -73,11 +73,6 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
   } else {
     return nil;
   }
-}
-
-- (ComponentHandle)componentHandle
-{
-  return _state != nullptr ? _state->getData().componentHandle : 0;
 }
 
 - (NSString *)componentViewName_DO_NOT_USE_THIS_IS_BROKEN

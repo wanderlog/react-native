@@ -50,6 +50,12 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (nullable UIView<RCTComponentViewProtocol> *)findComponentViewWithTag:(facebook::react::Tag)tag;
 
+/**
+ * Finds a component view descriptor by given `tag`.
+ * Returns `nullptr` if there is no registered component with the `tag`.
+ */
+- (const RCTComponentViewDescriptor *_Nullable)findComponentViewDescriptorWithTag:(facebook::react::Tag)tag;
+
 @end
 
 NS_ASSUME_NONNULL_END

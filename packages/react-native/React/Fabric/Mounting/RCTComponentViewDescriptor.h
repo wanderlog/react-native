@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 
 #import <React/RCTComponentViewProtocol.h>
+#import <react/renderer/core/ReactPrimitives.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -22,6 +23,13 @@ class RCTComponentViewDescriptor final {
    * Associated (and owned) native view instance.
    */
   __strong UIView<RCTComponentViewProtocol> *const view = nil;
+
+  /*
+   * The handle of the component descriptor this view was created for. Use this instead of the view class's
+   * `componentDescriptorProvider` handle: one class can serve several handles. For example, every legacy (Paper) view
+   * manager renders through RCTLegacyViewManagerInteropComponentView, but each one has its own handle.
+   */
+  const facebook::react::ComponentHandle componentHandle{};
 
   /*
    * Indicates a requirement to call on the view methods from

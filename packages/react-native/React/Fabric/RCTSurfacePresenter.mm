@@ -17,7 +17,6 @@
 #import <React/RCTConstants.h>
 #import <React/RCTFabricSurface.h>
 #import <React/RCTI18nUtil.h>
-#import <React/RCTLegacyViewManagerInteropComponentView.h>
 #import <React/RCTMountingManager.h>
 #import <React/RCTMountingManagerDelegate.h>
 #import <React/RCTScheduler.h>
@@ -162,20 +161,15 @@ using namespace facebook::react;
     return;
   }
 
-  UIView<RCTComponentViewProtocol> *componentView =
-      [_mountingManager.componentViewRegistry findComponentViewWithTag:tag];
-  if (componentView == nil) {
+  const auto *componentViewDescriptor = [_mountingManager.componentViewRegistry findComponentViewDescriptorWithTag:tag];
+  if (componentViewDescriptor == nullptr) {
     return; // This view probably isn't managed by Fabric
   }
-  // Legacy interop views (like react-native-maps' iOS Google polylines) share one view class, but each legacy view
-  // manager is registered under its own handle. See the "Paper Interop" fallback in RCTComponentViewFactory.mm. The
-  // class's handle would miss, and we'd drop their native-driver Animated updates, so we read the handle off the view.
-  // For the whole flow, see the comment above @implementation in RCTLegacyViewManagerInteropComponentView.mm.
-  ComponentHandle handle = [componentView isKindOfClass:[RCTLegacyViewManagerInteropComponentView class]]
-      // The isKindOfClass: check makes this cast safe
-      ? [(RCTLegacyViewManagerInteropComponentView *)componentView componentHandle]
-      : [[componentView class] componentDescriptorProvider].handle;
-  auto *componentDescriptor = [scheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:handle];
+  // Use the handle the view was created for, not its class's handle. They differ for legacy interop views, like
+  // react-native-maps' iOS Google polylines: they share one class, but each legacy view manager has its own handle.
+  // The class's handle would find no descriptor, and we'd drop their native-driver Animated updates.
+  auto *componentDescriptor =
+      [scheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:componentViewDescriptor->componentHandle];
 
   if (!componentDescriptor) {
     return;
