@@ -58,6 +58,20 @@ using namespace facebook::react;
   XCTAssertEqual(newViewDescriptor.view, [_componentViewRegistry findComponentViewWithTag:existingTag]);
 }
 
+- (void)testFindComponentHandleWithTag
+{
+  Tag nonExistingTag = 12;
+  XCTAssertFalse([_componentViewRegistry findComponentHandleWithTag:nonExistingTag].has_value());
+
+  Tag existingTag = 2;
+  auto handle = [RCTViewComponentView componentDescriptorProvider].handle;
+  [_componentViewRegistry dequeueComponentViewWithComponentHandle:handle tag:existingTag];
+
+  auto foundHandle = [_componentViewRegistry findComponentHandleWithTag:existingTag];
+  XCTAssertTrue(foundHandle.has_value());
+  XCTAssertEqual(foundHandle.value_or(0), handle);
+}
+
 - (void)testDequeueAndEnqueue
 {
   Tag existingTag = 2;

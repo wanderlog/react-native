@@ -21,12 +21,36 @@ using namespace facebook::react;
 static NSString *const kRCTLegacyInteropChildComponentKey = @"childComponentView";
 static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 
+/**
+ * How native-driver Animated frames reach a legacy (Paper) view
+ *
+ * Every legacy view manager (e.g. react-native-maps' AIRGoogleMapPolyline) renders through this one view class, but
+ * each manager registers its own component descriptor under its own handle. Animated frames used to look up the
+ * descriptor by this class's shared handle, find nothing, and get dropped without a warning.
+ *
+ * Now, for each frame:
+ *
+ * 1. Animated works out the frame's props, like a polyline's new stroke color, and hands them to RCTSurfacePresenter.
+ * 2. RCTSurfacePresenter finds this manager's descriptor using the handle the view registry created this view for.
+ * 3. RCTMountingManager merges the frame's props into this view's props. It calls updateProps:oldProps: with
+ *    Animated's keys cleared, so we don't skip any of them.
+ * 4. In finalizeUpdates:, the adapter sends the paper view only the props that changed, and the paper view's setter
+ *    runs (e.g. -[AIRGoogleMapPolyline setStrokeColor:]).
+ *
+ * When JS re-renders the view later, Animated's keys are still set during updateProps:oldProps:. So we skip them,
+ * and the paper view keeps its animated value instead of the stale JS one.
+ */
 @implementation RCTLegacyViewManagerInteropComponentView {
   NSMutableArray<NSDictionary *> *_viewsToBeMounted;
   NSMutableArray<UIView *> *_viewsToBeUnmounted;
   RCTLegacyViewManagerInteropCoordinatorAdapter *_adapter;
   LegacyViewManagerInteropShadowNode::ConcreteState::Shared _state;
   BOOL _hasInvokedForwardingWarning;
+  /**
+   * Keys that native-driver Animated owns, for the props update in progress. We skip them on a JS commit so the paper
+   * view keeps its animated value instead of the stale JS one.
+   */
+  NSSet<NSString *> *_Nullable _propKeysToSkip;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -165,6 +189,7 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
   _state.reset();
   self.contentView = nil;
   _hasInvokedForwardingWarning = NO;
+  _propKeysToSkip = nil;
   [super prepareForRecycle];
 }
 
@@ -202,6 +227,15 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 + (ComponentDescriptorProvider)componentDescriptorProvider
 {
   return concreteComponentDescriptorProvider<LegacyViewManagerInteropComponentDescriptor>();
+}
+
+- (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &)oldProps
+{
+  // This is named "broken" because once Animated touches a key, JS can't set that key again until the view is
+  // recycled. That's what we want here: Animated owns those keys, like opacity and transform in RCTViewComponentView.
+  // It's nil only while RCTMountingManager applies an Animated frame, so it tells a frame apart from a JS commit.
+  _propKeysToSkip = self.propKeysManagedByAnimated_DO_NOT_USE_THIS_IS_BROKEN;
+  [super updateProps:props oldProps:oldProps];
 }
 
 - (void)updateState:(const State::Shared &)state oldState:(const State::Shared &)oldState
@@ -271,7 +305,7 @@ static NSString *const kRCTLegacyInteropChildIndexKey = @"index";
 {
   if (updateMask & RNComponentViewUpdateMaskProps) {
     const auto &newProps = static_cast<const LegacyViewManagerInteropViewProps &>(*_props);
-    [_adapter setProps:newProps.otherProps];
+    [_adapter setProps:newProps.otherProps propKeysToSkip:_propKeysToSkip];
   }
 }
 

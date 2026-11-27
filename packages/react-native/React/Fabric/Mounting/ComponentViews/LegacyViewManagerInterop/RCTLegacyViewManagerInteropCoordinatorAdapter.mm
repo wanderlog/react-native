@@ -6,13 +6,18 @@
  */
 
 #import "RCTLegacyViewManagerInteropCoordinatorAdapter.h"
+#import <React/RCTConversions.h>
 #import <React/UIView+React.h>
 #import <react/utils/FollyConvert.h>
 
 @implementation RCTLegacyViewManagerInteropCoordinatorAdapter {
   RCTLegacyViewManagerInteropCoordinator *_coordinator;
   NSInteger _tag;
-  NSDictionary<NSString *, id> *_oldProps;
+  /**
+   * The props we last sent to the paper view. We diff against these so a frame of a native-driver animation only
+   * converts and sends the keys it changed, not every prop (e.g. a polyline's whole coordinates array).
+   */
+  folly::dynamic _sentProps;
 }
 
 - (instancetype)initWithCoordinator:(RCTLegacyViewManagerInteropCoordinator *)coordinator reactTag:(NSInteger)tag
@@ -20,6 +25,7 @@
   if (self = [super init]) {
     _coordinator = coordinator;
     _tag = tag;
+    _sentProps = folly::dynamic::object();
   }
   return self;
 }
@@ -45,16 +51,16 @@
   return _paperView;
 }
 
-- (void)setProps:(const folly::dynamic &)props
+- (void)setProps:(const folly::dynamic &)props propKeysToSkip:(nullable NSSet<NSString *> *)propKeysToSkip
 {
-  if (props.isObject()) {
-    NSDictionary<NSString *, id> *convertedProps = facebook::react::convertFollyDynamicToId(props);
-    NSDictionary<NSString *, id> *diffedProps = [self _diffProps:convertedProps];
-
-    [_coordinator setProps:diffedProps forView:self.paperView];
-
-    _oldProps = convertedProps;
+  if (!props.isObject()) {
+    return;
   }
+  folly::dynamic changedProps = RCTLegacyViewManagerInteropDiffProps(props, _sentProps, propKeysToSkip);
+  if (changedProps.empty()) {
+    return;
+  }
+  [_coordinator setProps:facebook::react::convertFollyDynamicToId(changedProps) forView:self.paperView];
 }
 
 - (void)handleCommand:(NSString *)commandName args:(NSArray *)args
@@ -62,87 +68,24 @@
   [_coordinator handleCommand:commandName args:args reactTag:_tag paperView:self.paperView];
 }
 
-- (NSDictionary<NSString *, id> *)_diffProps:(NSDictionary<NSString *, id> *)newProps
-{
-  NSMutableDictionary<NSString *, id> *diffedProps = [NSMutableDictionary new];
-
-  [newProps enumerateKeysAndObjectsUsingBlock:^(NSString *key, id newProp, __unused BOOL *stop) {
-    id oldProp = _oldProps[key];
-    if ([self _prop:newProp isDifferentFrom:oldProp]) {
-      diffedProps[key] = newProp;
-    }
-  }];
-
-  return diffedProps;
-}
-
-#pragma mark - Private
-
-- (BOOL)_prop:(id)oldProp isDifferentFrom:(id)newProp
-{
-  // Check for JSON types.
-  // JSON types can be of:
-  // * number
-  // * bool
-  // * String
-  // * Array
-  // * Objects => Dictionaries in ObjectiveC
-  // * Null
-
-  // Check for NULL
-  BOOL bothNil = !oldProp && !newProp;
-  if (bothNil) {
-    return NO;
-  }
-
-  BOOL onlyOneNil = (oldProp && !newProp) || (!oldProp && newProp);
-  if (onlyOneNil) {
-    return YES;
-  }
-
-  if ([self _propIsSameNumber:oldProp second:newProp]) {
-    // Boolean should be captured by NSNumber
-    return NO;
-  }
-
-  if ([self _propIsSameString:oldProp second:newProp]) {
-    return NO;
-  }
-
-  if ([self _propIsSameArray:oldProp second:newProp]) {
-    return NO;
-  }
-
-  if ([self _propIsSameObject:oldProp second:newProp]) {
-    return NO;
-  }
-
-  // Previous behavior, fallback to YES
-  return YES;
-}
-
-- (BOOL)_propIsSameNumber:(id)first second:(id)second
-{
-  return [first isKindOfClass:[NSNumber class]] && [second isKindOfClass:[NSNumber class]] &&
-      [(NSNumber *)first isEqualToNumber:(NSNumber *)second];
-}
-
-- (BOOL)_propIsSameString:(id)first second:(id)second
-{
-  return [first isKindOfClass:[NSString class]] && [second isKindOfClass:[NSString class]] &&
-      [(NSString *)first isEqualToString:(NSString *)second];
-}
-
-- (BOOL)_propIsSameArray:(id)first second:(id)second
-{
-  return [first isKindOfClass:[NSArray class]] && [second isKindOfClass:[NSArray class]] &&
-      [(NSArray *)first isEqualToArray:(NSArray *)second];
-}
-
-- (BOOL)_propIsSameObject:(id)first second:(id)second
-{
-  return [first isKindOfClass:[NSDictionary class]] && [second isKindOfClass:[NSDictionary class]] &&
-      [(NSDictionary *)first isEqualToDictionary:(NSDictionary *)second];
-}
-
 @end
+
+folly::dynamic RCTLegacyViewManagerInteropDiffProps(
+    const folly::dynamic &props,
+    folly::dynamic &sentProps,
+    NSSet<NSString *> *_Nullable propKeysToSkip)
+{
+  folly::dynamic changedProps = folly::dynamic::object();
+  for (const auto &[key, value] : props.items()) {
+    if (propKeysToSkip != nil && [propKeysToSkip containsObject:RCTNSStringFromString(key.asString())]) {
+      continue;
+    }
+    auto sentProp = sentProps.find(key);
+    if (sentProp != sentProps.items().end() && sentProp->second == value) {
+      continue;
+    }
+    changedProps[key] = value;
+    sentProps[key] = value;
+  }
+  return changedProps;
+}

@@ -214,6 +214,7 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
 
   return RCTComponentViewDescriptor{
       .view = [viewClass new],
+      .componentHandle = componentHandle,
       .observesMountingTransactionWillMount = componentViewClassDescriptor.observesMountingTransactionWillMount,
       .observesMountingTransactionDidMount = componentViewClassDescriptor.observesMountingTransactionDidMount,
       .shouldBeRecycled = componentViewClassDescriptor.shouldBeRecycled,
