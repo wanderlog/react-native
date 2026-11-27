@@ -161,15 +161,14 @@ using namespace facebook::react;
     return;
   }
 
-  const auto *componentViewDescriptor = [_mountingManager.componentViewRegistry findComponentViewDescriptorWithTag:tag];
-  if (componentViewDescriptor == nullptr) {
+  std::optional<ComponentHandle> handle = [_mountingManager.componentViewRegistry findComponentHandleWithTag:tag];
+  if (!handle) {
     return; // This view probably isn't managed by Fabric
   }
   // Use the handle the view was created for, not its class's handle. They differ for legacy interop views, like
   // react-native-maps' iOS Google polylines: they share one class, but each legacy view manager has its own handle.
   // The class's handle would find no descriptor, and we'd drop their native-driver Animated updates.
-  auto *componentDescriptor =
-      [scheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:componentViewDescriptor->componentHandle];
+  auto *componentDescriptor = [scheduler findComponentDescriptorByHandle_DO_NOT_USE_THIS_IS_BROKEN:*handle];
 
   if (!componentDescriptor) {
     return;

@@ -7,6 +7,8 @@
 
 #import <UIKit/UIKit.h>
 
+#import <optional>
+
 #import <React/RCTComponentViewDescriptor.h>
 #import <React/RCTComponentViewFactory.h>
 #import <React/RCTComponentViewProtocol.h>
@@ -51,10 +53,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable UIView<RCTComponentViewProtocol> *)findComponentViewWithTag:(facebook::react::Tag)tag;
 
 /**
- * Finds a component view descriptor by given `tag`.
- * Returns `nullptr` if there is no registered component with the `tag`.
+ * Finds the handle of the component descriptor that the view with given `tag` was created for.
+ * Returns `std::nullopt` if there is no registered component with the `tag`.
  */
-- (const RCTComponentViewDescriptor *_Nullable)findComponentViewDescriptorWithTag:(facebook::react::Tag)tag;
+- (std::optional<facebook::react::ComponentHandle>)findComponentHandleWithTag:(facebook::react::Tag)tag;
 
 @end
 

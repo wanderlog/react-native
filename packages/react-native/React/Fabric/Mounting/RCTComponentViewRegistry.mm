@@ -87,14 +87,14 @@ const NSInteger RCTComponentViewRegistryRecyclePoolMaxSize = 1024;
   return iterator->second.view;
 }
 
-- (const RCTComponentViewDescriptor *_Nullable)findComponentViewDescriptorWithTag:(Tag)tag
+- (std::optional<ComponentHandle>)findComponentHandleWithTag:(Tag)tag
 {
   RCTAssertMainQueue();
   auto iterator = _registry.find(tag);
   if (iterator == _registry.end()) {
-    return nullptr;
+    return std::nullopt;
   }
-  return &iterator->second;
+  return iterator->second.componentHandle;
 }
 
 - (RCTComponentViewDescriptor)_dequeueComponentViewWithComponentHandle:(ComponentHandle)componentHandle
