@@ -28,7 +28,7 @@
   folly::dynamic secondProps = folly::dynamic::object("coordinates", coordinates)("strokeColor", "#FF000080");
   XCTAssertEqual(
       RCTLegacyViewManagerInteropDiffProps(secondProps, sentProps, nil),
-      folly::dynamic::object("strokeColor", "#FF000080"));
+      folly::dynamic(folly::dynamic::object("strokeColor", "#FF000080")));
   XCTAssertEqual(sentProps, secondProps);
 }
 
@@ -40,8 +40,8 @@
   folly::dynamic jsCommitProps = folly::dynamic::object("strokeColor", "#FF000000")("strokeWidth", 4);
   XCTAssertEqual(
       RCTLegacyViewManagerInteropDiffProps(jsCommitProps, sentProps, [NSSet setWithObject:@"strokeColor"]),
-      folly::dynamic::object("strokeWidth", 4));
-  XCTAssertEqual(sentProps, folly::dynamic::object("strokeColor", "#FF0000FF")("strokeWidth", 4));
+      folly::dynamic(folly::dynamic::object("strokeWidth", 4)));
+  XCTAssertEqual(sentProps, folly::dynamic(folly::dynamic::object("strokeColor", "#FF0000FF")("strokeWidth", 4)));
 }
 
 @end
